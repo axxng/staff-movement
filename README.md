@@ -17,6 +17,10 @@ app via `localStorage`.
   on the top zone to clear the manager. Cycle prevention built in.
 - **History** — every reorganisation is recorded with timestamp, type, and
   before/after labels. Searchable and filterable.
+- **Per-staff drilldown** — click any staff card (or the colored dot in the
+  sidebar) to open a detail drawer with their role, manager, direct
+  reports, current teams, and full per-person history. Reassign manager,
+  role, or team membership in-place.
 - **Search** — global search box dims everything that doesn't match a name,
   role, or team. Works on both views simultaneously.
 - **Undo / Redo** — `Cmd/Ctrl+Z` to undo, `Cmd/Ctrl+Shift+Z` (or `Ctrl+Y`) to

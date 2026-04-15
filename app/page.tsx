@@ -8,6 +8,7 @@ import HistoryView from "@/components/HistoryView";
 import BackupBar from "@/components/BackupBar";
 import SyncIndicator from "@/components/SyncIndicator";
 import PasswordPrompt from "@/components/PasswordPrompt";
+import StaffDetailDrawer from "@/components/StaffDetailDrawer";
 import { useStore, useTemporal } from "@/lib/store";
 import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
@@ -203,6 +204,7 @@ function PageInner() {
       </main>
 
       {showPasswordModal && <PasswordPrompt onSubmit={handlePasswordSubmit} />}
+      <StaffDetailDrawer />
     </div>
   );
 }

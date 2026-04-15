@@ -2,6 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
+import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
 import { contrastText } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ type Props = {
 export default function StaffBox({ staffId, dragId, payload, compact, onClick }: Props) {
   const staff = useStore((s) => s.staff[staffId]);
   const role = useStore((s) => (staff ? s.roles[staff.roleId] : undefined));
+  const selectStaff = useUI((s) => s.selectStaff);
   const { hasQuery, matchedStaff } = useSearch();
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -35,7 +37,7 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      onClick={onClick}
+      onClick={onClick ?? (() => selectStaff(staffId))}
       className={`select-none cursor-grab active:cursor-grabbing rounded-lg shadow-sm border border-black/10 transition-all ${
         compact ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm"
       } ${isDragging ? "opacity-40" : ""} ${dimmed ? "opacity-25" : ""} ${
