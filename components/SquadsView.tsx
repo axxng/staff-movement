@@ -10,6 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
+import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
 import type { Team, TeamId } from "@/lib/types";
@@ -34,21 +35,30 @@ function TeamBox({ team }: { team: Tree }) {
   const renameTeam = useStore((s) => s.renameTeam);
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
+  const { hasQuery, matchedTeams } = useSearch();
+  const exportRef = useRef<HTMLDivElement>(null);
 
-  const { setNodeRef, isOver } = useDroppable({
+  const setDroppable = useDroppable({
     id: `team-drop-${team.id}`,
     data: { kind: "team", teamId: team.id },
   });
+  const isOver = setDroppable.isOver;
+
+  const setRefs = (el: HTMLDivElement | null) => {
+    setDroppable.setNodeRef(el);
+    (exportRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+  };
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(team.name);
+  const dimmed = hasQuery && !matchedTeams.has(team.id);
 
   return (
     <div
-      ref={setNodeRef}
-      className={`rounded-xl border bg-slate-50 p-3 min-w-[220px] ${
+      ref={setRefs}
+      className={`rounded-xl border bg-slate-50 p-3 min-w-[220px] transition-opacity ${
         isOver ? "border-blue-500 bg-blue-50" : "border-slate-200"
-      }`}
+      } ${dimmed ? "opacity-40" : ""}`}
     >
       <div className="flex items-center gap-1 mb-2">
         {editing ? (
@@ -81,6 +91,13 @@ function TeamBox({ team }: { team: Tree }) {
             {team.name}
           </button>
         )}
+        <ExportButton
+          targetRef={exportRef}
+          filename={`team-${team.name}`}
+          compact
+          label="PNG"
+          title="Export this team subtree as PNG"
+        />
         <button
           className="text-xs px-1.5 py-0.5 rounded hover:bg-slate-200"
           onClick={() => {

@@ -6,18 +6,88 @@ import ReportingView from "@/components/ReportingView";
 import SquadsView from "@/components/SquadsView";
 import HistoryView from "@/components/HistoryView";
 import BackupBar from "@/components/BackupBar";
-import { useStore } from "@/lib/store";
+import SyncIndicator from "@/components/SyncIndicator";
+import PasswordPrompt from "@/components/PasswordPrompt";
+import { useStore, useTemporal } from "@/lib/store";
+import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
+import { SearchProvider, useSearch } from "@/lib/search";
 
 type Tab = "reporting" | "squads" | "history";
 
-export default function Home() {
+const PW_KEY = "staff-movement-password";
+
+function HeaderSearch() {
+  const { query, setQuery } = useSearch();
+  return (
+    <input
+      className="text-sm border rounded px-3 py-1.5 w-56"
+      placeholder="Search people or teams…"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+    />
+  );
+}
+
+function UndoRedoButtons() {
+  const pastStates = useTemporal((s) => s.pastStates.length);
+  const futureStates = useTemporal((s) => s.futureStates.length);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toLowerCase().includes("mac");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (!mod) return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) {
+        e.preventDefault();
+        useStore.temporal.getState().undo();
+      } else if ((k === "z" && e.shiftKey) || k === "y") {
+        e.preventDefault();
+        useStore.temporal.getState().redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="flex gap-1">
+      <button
+        className="px-2 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-40"
+        onClick={() => useStore.temporal.getState().undo()}
+        disabled={pastStates === 0}
+        title="Undo (Ctrl/Cmd+Z)"
+      >
+        ↶ Undo
+      </button>
+      <button
+        className="px-2 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-40"
+        onClick={() => useStore.temporal.getState().redo()}
+        disabled={futureStates === 0}
+        title="Redo (Ctrl/Cmd+Shift+Z)"
+      >
+        ↷ Redo
+      </button>
+    </div>
+  );
+}
+
+function PageInner() {
   const [tab, setTab] = useState<Tab>("squads");
   const [hydrated, setHydrated] = useState(false);
+  const [config, setConfig] = useState<SyncConfig | null>(null);
+  const [password, setPassword] = useState<string | null>(null);
 
-  // Avoid hydration mismatch from persisted localStorage state
   useEffect(() => {
     setHydrated(true);
+    setPassword(localStorage.getItem(PW_KEY));
+    fetchConfig().then(setConfig);
+    // Persist hydration counts as a "set" inside zundo. Clear the
+    // initial entry so the user can't undo themselves back to empty.
+    useStore.temporal.getState().clear();
   }, []);
+
+  const sync = useSync({ enabled: hydrated, config, password });
 
   const totals = useStore((s) => ({
     staff: Object.keys(s.staff).length,
@@ -26,7 +96,7 @@ export default function Home() {
   }));
 
   const seedSample = () => {
-    const { addStaff, addTeam, addStaffToTeam, setManager } = useStore.getState();
+    const { addStaff, addTeam, addStaffToTeam } = useStore.getState();
     const dir = addStaff({ name: "Avery Director", roleId: "director" });
     const em1 = addStaff({ name: "Sam EM", roleId: "em", managerId: dir });
     const em2 = addStaff({ name: "Jules EM", roleId: "em", managerId: dir });
@@ -46,14 +116,30 @@ export default function Home() {
     addStaffToTeam(pm, growth);
     addStaffToTeam(des, growth);
     addStaffToTeam(des, platform);
-    setManager(em1, dir);
   };
+
+  const handlePasswordSubmit = (pw: string) => {
+    localStorage.setItem(PW_KEY, pw);
+    setPassword(pw);
+  };
+
+  const signOut = () => {
+    localStorage.removeItem(PW_KEY);
+    setPassword(null);
+  };
+
+  const showPasswordModal =
+    hydrated &&
+    config?.hasStorage &&
+    config.authRequired &&
+    !password &&
+    sync.status === "auth-required";
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="border-b bg-white px-6 py-3 flex items-center justify-between">
+        <header className="border-b bg-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex gap-1">
             {(["squads", "reporting", "history"] as const).map((t) => (
               <button
@@ -69,12 +155,28 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <HeaderSearch />
+            <UndoRedoButtons />
             <div className="text-xs text-slate-500">
               {hydrated
                 ? `${totals.staff} staff · ${totals.teams} teams · ${totals.movements} events`
                 : "…"}
             </div>
+            <SyncIndicator
+              status={sync.status}
+              lastSyncedAt={sync.lastSyncedAt}
+              onClick={sync.forceSync}
+            />
+            {password && (
+              <button
+                className="text-xs text-slate-500 hover:text-slate-900"
+                onClick={signOut}
+                title="Forget password on this device"
+              >
+                Sign out
+              </button>
+            )}
             {hydrated && totals.staff === 0 && totals.teams === 0 && (
               <button
                 className="px-3 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
@@ -99,6 +201,16 @@ export default function Home() {
           )}
         </section>
       </main>
+
+      {showPasswordModal && <PasswordPrompt onSubmit={handlePasswordSubmit} />}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <SearchProvider>
+      <PageInner />
+    </SearchProvider>
   );
 }

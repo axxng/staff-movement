@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { temporal } from "zundo";
 import type {
   AppState,
   Movement,
@@ -85,7 +87,8 @@ const labelForRole = (r: Role | undefined) => (r ? r.label : null);
 
 export const useStore = create<Store>()(
   persist(
-    (set, get) => ({
+    temporal(
+      (set, get) => ({
       ...initialState,
 
       addStaff: ({ name, roleId, managerId = null }) => {
@@ -415,6 +418,24 @@ export const useStore = create<Store>()(
 
       resetAll: () => set({ ...initialState }),
     }),
+      {
+        // Only diff the data slice for undo so action references don't
+        // get serialised into history.
+        partialize: (s) => ({
+          version: s.version,
+          staff: s.staff,
+          teams: s.teams,
+          roles: s.roles,
+          movements: s.movements,
+        }),
+        limit: 100,
+        equality: (a, b) =>
+          a.staff === b.staff &&
+          a.teams === b.teams &&
+          a.roles === b.roles &&
+          a.movements === b.movements,
+      },
+    ),
     {
       name: "staff-movement-v1",
       storage: createJSONStorage(() => localStorage),
@@ -428,6 +449,18 @@ export const useStore = create<Store>()(
     },
   ),
 );
+
+// Hook into the zundo temporal store for undo/redo state
+type TemporalState = ReturnType<typeof useStore.temporal.getState>;
+
+export const useTemporal = <T,>(selector: (s: TemporalState) => T): T => {
+  const [, force] = useState({});
+  useEffect(() => {
+    const unsub = useStore.temporal.subscribe(() => force({}));
+    return () => unsub();
+  }, []);
+  return selector(useStore.temporal.getState());
+};
 
 export const movementTypeLabel = (t: MovementType): string => {
   switch (t) {
