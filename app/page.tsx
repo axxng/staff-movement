@@ -1,28 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ReportingView from "@/components/ReportingView";
 import SquadsView from "@/components/SquadsView";
 import HistoryView from "@/components/HistoryView";
 import BackupBar from "@/components/BackupBar";
 import SyncIndicator from "@/components/SyncIndicator";
-import PasswordPrompt from "@/components/PasswordPrompt";
 import StaffDetailDrawer from "@/components/StaffDetailDrawer";
 import { useStore, useTemporal } from "@/lib/store";
 import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
+import type { SessionUser } from "@/lib/types";
 
 type Tab = "reporting" | "squads" | "history";
-
-const PW_KEY = "staff-movement-password";
 
 function HeaderSearch() {
   const { query, setQuery } = useSearch();
   return (
     <input
       className="text-sm border rounded px-3 py-1.5 w-56"
-      placeholder="Search people or teams…"
+      placeholder="Search people or teams..."
       value={query}
       onChange={(e) => setQuery(e.target.value)}
     />
@@ -59,7 +58,7 @@ function UndoRedoButtons() {
         disabled={pastStates === 0}
         title="Undo (Ctrl/Cmd+Z)"
       >
-        ↶ Undo
+        Undo
       </button>
       <button
         className="px-2 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-40"
@@ -67,28 +66,32 @@ function UndoRedoButtons() {
         disabled={futureStates === 0}
         title="Redo (Ctrl/Cmd+Shift+Z)"
       >
-        ↷ Redo
+        Redo
       </button>
     </div>
   );
 }
 
-function PageInner() {
+function PageInner({ user }: { user: SessionUser }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("squads");
   const [hydrated, setHydrated] = useState(false);
   const [config, setConfig] = useState<SyncConfig | null>(null);
-  const [password, setPassword] = useState<string | null>(null);
 
   useEffect(() => {
     setHydrated(true);
-    setPassword(localStorage.getItem(PW_KEY));
     fetchConfig().then(setConfig);
-    // Persist hydration counts as a "set" inside zundo. Clear the
-    // initial entry so the user can't undo themselves back to empty.
     useStore.temporal.getState().clear();
   }, []);
 
-  const sync = useSync({ enabled: hydrated, config, password });
+  const sync = useSync({ enabled: hydrated, config });
+
+  // If sync gets a 401, redirect to login
+  useEffect(() => {
+    if (sync.status === "auth-required") {
+      router.replace("/login");
+    }
+  }, [sync.status, router]);
 
   const totals = useStore((s) => ({
     staff: Object.keys(s.staff).length,
@@ -119,26 +122,14 @@ function PageInner() {
     addStaffToTeam(des, platform);
   };
 
-  const handlePasswordSubmit = (pw: string) => {
-    localStorage.setItem(PW_KEY, pw);
-    setPassword(pw);
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
   };
-
-  const signOut = () => {
-    localStorage.removeItem(PW_KEY);
-    setPassword(null);
-  };
-
-  const showPasswordModal =
-    hydrated &&
-    config?.hasStorage &&
-    config.authRequired &&
-    !password &&
-    sync.status === "auth-required";
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar user={user} />
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="border-b bg-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex gap-1">
@@ -161,23 +152,23 @@ function PageInner() {
             <UndoRedoButtons />
             <div className="text-xs text-slate-500">
               {hydrated
-                ? `${totals.staff} staff · ${totals.teams} teams · ${totals.movements} events`
-                : "…"}
+                ? `${totals.staff} staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
+                : "\u2026"}
             </div>
             <SyncIndicator
               status={sync.status}
               lastSyncedAt={sync.lastSyncedAt}
               onClick={sync.forceSync}
             />
-            {password && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">{user.username}</span>
               <button
                 className="text-xs text-slate-500 hover:text-slate-900"
                 onClick={signOut}
-                title="Forget password on this device"
               >
                 Sign out
               </button>
-            )}
+            </div>
             {hydrated && totals.staff === 0 && totals.teams === 0 && (
               <button
                 className="px-3 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
@@ -192,7 +183,7 @@ function PageInner() {
 
         <section className="flex-1 p-6 overflow-auto">
           {!hydrated ? (
-            <div className="text-slate-400 text-sm">Loading…</div>
+            <div className="text-slate-400 text-sm">Loading...</div>
           ) : tab === "squads" ? (
             <SquadsView />
           ) : tab === "reporting" ? (
@@ -203,16 +194,42 @@ function PageInner() {
         </section>
       </main>
 
-      {showPasswordModal && <PasswordPrompt onSubmit={handlePasswordSubmit} />}
       <StaffDetailDrawer />
     </div>
   );
 }
 
 export default function Home() {
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("not authed");
+        return res.json();
+      })
+      .then((data: SessionUser) => {
+        setUser(data);
+        setChecking(false);
+      })
+      .catch(() => {
+        router.replace("/login");
+      });
+  }, [router]);
+
+  if (checking || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <SearchProvider>
-      <PageInner />
+      <PageInner user={user} />
     </SearchProvider>
   );
 }
