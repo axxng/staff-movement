@@ -10,19 +10,13 @@ export type SyncStatus =
   | "syncing"
   | "saved"
   | "error"
-  | "offline" // storage not configured server-side
+  | "offline"
   | "auth-required"
   | "local-only";
 
 export type SyncConfig = {
   hasStorage: boolean;
-  authRequired: boolean;
-};
-
-const passwordHeader = (pw: string | null): HeadersInit => {
-  const h: Record<string, string> = {};
-  if (pw) h["x-app-password"] = pw;
-  return h;
+  hasUsers: boolean;
 };
 
 export const fetchConfig = async (): Promise<SyncConfig | null> => {
@@ -35,25 +29,12 @@ export const fetchConfig = async (): Promise<SyncConfig | null> => {
   }
 };
 
-export const verifyPassword = async (pw: string): Promise<boolean> => {
-  try {
-    const res = await fetch("/api/state", {
-      headers: passwordHeader(pw),
-      cache: "no-store",
-    });
-    return res.status !== 401;
-  } catch {
-    return false;
-  }
-};
-
 type UseSyncArgs = {
   enabled: boolean;
   config: SyncConfig | null;
-  password: string | null;
 };
 
-export function useSync({ enabled, config, password }: UseSyncArgs) {
+export function useSync({ enabled, config }: UseSyncArgs) {
   const [status, setStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const baseUpdatedAtRef = useRef<number | null>(null);
@@ -61,73 +42,66 @@ export function useSync({ enabled, config, password }: UseSyncArgs) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDoneRef = useRef(false);
 
-  const save = useCallback(
-    async (pw: string | null) => {
-      setStatus("syncing");
-      const cur = useStore.getState();
-      const body = {
-        state: {
-          version: cur.version,
-          staff: cur.staff,
-          teams: cur.teams,
-          roles: cur.roles,
-          movements: cur.movements,
-        } as AppState,
-        baseUpdatedAt: baseUpdatedAtRef.current,
-      };
-      try {
-        const res = await fetch("/api/state", {
-          method: "PUT",
-          headers: { "content-type": "application/json", ...passwordHeader(pw) },
-          body: JSON.stringify(body),
-        });
-        if (res.status === 409) {
-          const json = (await res.json()) as {
-            state: AppState | null;
-            updatedAt: number;
-          };
-          baseUpdatedAtRef.current = json.updatedAt;
-          if (json.state) {
-            suppressRef.current = true;
-            useStore.getState().replaceState(json.state);
-            setTimeout(() => {
-              suppressRef.current = false;
-            }, 0);
-          }
-          setLastSyncedAt(json.updatedAt);
-          setStatus("saved");
-          return;
-        }
-        if (res.status === 401) {
-          setStatus("auth-required");
-          return;
-        }
-        if (res.status === 503) {
-          setStatus("local-only");
-          return;
-        }
-        if (!res.ok) throw new Error("save failed");
-        const json = (await res.json()) as { ok: true; updatedAt: number };
+  const save = useCallback(async () => {
+    setStatus("syncing");
+    const cur = useStore.getState();
+    const body = {
+      state: {
+        version: cur.version,
+        staff: cur.staff,
+        teams: cur.teams,
+        roles: cur.roles,
+        movements: cur.movements,
+      } as AppState,
+      baseUpdatedAt: baseUpdatedAtRef.current,
+    };
+    try {
+      const res = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 409) {
+        const json = (await res.json()) as {
+          state: AppState | null;
+          updatedAt: number;
+        };
         baseUpdatedAtRef.current = json.updatedAt;
+        if (json.state) {
+          suppressRef.current = true;
+          useStore.getState().replaceState(json.state);
+          setTimeout(() => {
+            suppressRef.current = false;
+          }, 0);
+        }
         setLastSyncedAt(json.updatedAt);
         setStatus("saved");
-      } catch (err) {
-        console.error("sync save failed", err);
-        setStatus("error");
+        return;
       }
-    },
-    [],
-  );
+      if (res.status === 401) {
+        setStatus("auth-required");
+        return;
+      }
+      if (res.status === 503) {
+        setStatus("local-only");
+        return;
+      }
+      if (!res.ok) throw new Error("save failed");
+      const json = (await res.json()) as { ok: true; updatedAt: number };
+      baseUpdatedAtRef.current = json.updatedAt;
+      setLastSyncedAt(json.updatedAt);
+      setStatus("saved");
+    } catch (err) {
+      console.error("sync save failed", err);
+      setStatus("error");
+    }
+  }, []);
 
-  // Initial load when enabled / config / password change
+  // Initial load
   useEffect(() => {
     if (!enabled || !config) return;
     if (!config.hasStorage) {
       setStatus("local-only");
-      return;
-    }
-    if (config.authRequired && !password) {
-      setStatus("auth-required");
       return;
     }
 
@@ -136,10 +110,7 @@ export function useSync({ enabled, config, password }: UseSyncArgs) {
     initialLoadDoneRef.current = false;
     (async () => {
       try {
-        const res = await fetch("/api/state", {
-          headers: passwordHeader(password),
-          cache: "no-store",
-        });
+        const res = await fetch("/api/state", { cache: "no-store" });
         if (cancelled) return;
         if (res.status === 401) {
           setStatus("auth-required");
@@ -173,14 +144,13 @@ export function useSync({ enabled, config, password }: UseSyncArgs) {
           }, 0);
           setStatus("saved");
         } else {
-          // Server is empty — push local state if we have any
           const cur = useStore.getState();
           const hasLocal =
             Object.keys(cur.staff).length > 0 ||
             Object.keys(cur.teams).length > 0;
           initialLoadDoneRef.current = true;
           if (hasLocal) {
-            await save(password);
+            await save();
           } else {
             setStatus("saved");
           }
@@ -193,12 +163,11 @@ export function useSync({ enabled, config, password }: UseSyncArgs) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, config, password, save]);
+  }, [enabled, config, save]);
 
-  // Subscribe to local store changes and push to server
+  // Subscribe to store changes
   useEffect(() => {
     if (!enabled || !config?.hasStorage) return;
-    if (config.authRequired && !password) return;
     const unsub = useStore.subscribe((state, prev) => {
       if (suppressRef.current) return;
       if (!initialLoadDoneRef.current) return;
@@ -212,16 +181,16 @@ export function useSync({ enabled, config, password }: UseSyncArgs) {
       }
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        save(password);
+        save();
       }, 600);
     });
     return () => {
       unsub();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [enabled, config, password, save]);
+  }, [enabled, config, save]);
 
-  const forceSync = useCallback(() => save(password), [save, password]);
+  const forceSync = useCallback(() => save(), [save]);
 
   return { status, lastSyncedAt, forceSync };
 }
