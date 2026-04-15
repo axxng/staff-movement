@@ -10,6 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
+import { useUI } from "@/lib/ui";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
 import type { StaffId } from "@/lib/types";
@@ -115,9 +116,19 @@ export default function ReportingView() {
     if (!over) return;
     const data = over.data.current as { kind?: string; managerId?: string | null } | undefined;
     if (data?.kind !== "manager") return;
-    const staffId = (active.data.current as { staffId?: string } | undefined)?.staffId;
-    if (!staffId) return;
-    setManager(staffId, data.managerId ?? null);
+    const draggedId = (active.data.current as { staffId?: string } | undefined)?.staffId;
+    if (!draggedId) return;
+
+    const { multiSelected, clearMultiSelect } = useUI.getState();
+    const staffIds = multiSelected.size > 0 && multiSelected.has(draggedId)
+      ? Array.from(multiSelected)
+      : [draggedId];
+
+    for (const staffId of staffIds) {
+      setManager(staffId, data.managerId ?? null);
+    }
+
+    clearMultiSelect();
   };
 
   const isEmpty = Object.keys(staff).length === 0;

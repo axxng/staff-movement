@@ -10,6 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
+import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
@@ -222,20 +223,42 @@ export default function SquadsView() {
     const ad = active.data.current as
       | { staffId?: string; fromTeamId?: string | null }
       | undefined;
-    const staffId = ad?.staffId;
-    if (!staffId) return;
+    const draggedId = ad?.staffId;
+    if (!draggedId) return;
 
-    if (data?.kind === "team" && data.teamId) {
-      const fromTeamId = ad?.fromTeamId ?? null;
-      if (fromTeamId == null) {
-        addStaffToTeam(staffId, data.teamId);
-      } else {
-        moveStaffBetweenTeams(staffId, fromTeamId, data.teamId);
+    const { multiSelected, clearMultiSelect } = useUI.getState();
+    // If the dragged staff is in the multi-selection, move all selected
+    const staffIds = multiSelected.size > 0 && multiSelected.has(draggedId)
+      ? Array.from(multiSelected)
+      : [draggedId];
+
+    for (const staffId of staffIds) {
+      if (data?.kind === "team" && data.teamId) {
+        // Find which team this staff is currently in (for the drop context)
+        const fromTeamId = staffId === draggedId
+          ? (ad?.fromTeamId ?? null)
+          : findFromTeam(staffId);
+        if (fromTeamId == null) {
+          addStaffToTeam(staffId, data.teamId);
+        } else {
+          moveStaffBetweenTeams(staffId, fromTeamId, data.teamId);
+        }
+      } else if (data?.kind === "unassigned") {
+        const fromTeamId = staffId === draggedId
+          ? (ad?.fromTeamId ?? null)
+          : findFromTeam(staffId);
+        if (fromTeamId) removeStaffFromTeam(staffId, fromTeamId);
       }
-    } else if (data?.kind === "unassigned") {
-      const fromTeamId = ad?.fromTeamId ?? null;
-      if (fromTeamId) removeStaffFromTeam(staffId, fromTeamId);
     }
+
+    clearMultiSelect();
+  };
+
+  const findFromTeam = (staffId: string): string | null => {
+    for (const t of Object.values(teams)) {
+      if (t.memberIds.includes(staffId)) return t.id;
+    }
+    return null;
   };
 
   return (

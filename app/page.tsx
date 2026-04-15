@@ -12,6 +12,7 @@ import StaffDetailDrawer from "@/components/StaffDetailDrawer";
 import { useStore, useTemporal, setCurrentActor } from "@/lib/store";
 import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
+import { useUI } from "@/lib/ui";
 import type { SessionUser } from "@/lib/types";
 
 type Tab = "reporting" | "squads" | "history";
@@ -67,6 +68,24 @@ function UndoRedoButtons() {
         title="Redo (Ctrl/Cmd+Shift+Z)"
       >
         Redo
+      </button>
+    </div>
+  );
+}
+
+function SelectionBadge() {
+  const count = useUI((s) => s.multiSelected.size);
+  const clear = useUI((s) => s.clearMultiSelect);
+  if (count === 0) return null;
+  return (
+    <div className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-md">
+      <span>{count} selected</span>
+      <button
+        className="ml-1 hover:text-blue-900"
+        onClick={clear}
+        title="Clear selection"
+      >
+        ×
       </button>
     </div>
   );
@@ -151,6 +170,7 @@ function PageInner({ user }: { user: SessionUser }) {
             ))}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <SelectionBadge />
             <HeaderSearch />
             {!isGuest && <UndoRedoButtons />}
             <div className="text-xs text-slate-500">
