@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
+import { getRedis, userCount } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const hasStorage =
-    !!(process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL) &&
-    !!(process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN);
-  const authRequired = !!process.env.APP_PASSWORD;
-  return NextResponse.json({ hasStorage, authRequired });
+  const redis = getRedis();
+  const hasStorage = !!redis;
+
+  let hasUsers = false;
+  if (redis) {
+    try {
+      hasUsers = (await userCount(redis)) > 0;
+    } catch {
+      // Redis not reachable — treat as no users
+    }
+  }
+
+  return NextResponse.json({ hasStorage, hasUsers });
 }
