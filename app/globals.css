@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  height: 100%;
+  background: #f6f7f9;
+  color: #111827;
+}
+
+/* Org chart connectors */
+.org-tree, .org-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.org-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 28px;
+  gap: 12px;
+}
+
+.org-tree li {
+  position: relative;
+  padding: 28px 8px 0 8px;
+  text-align: center;
+}
+
+.org-tree li::before,
+.org-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 28px;
+  border-top: 2px solid #cbd5e1;
+  width: 50%;
+}
+
+.org-tree li::before {
+  left: 0;
+  border-right: 2px solid #cbd5e1;
+}
+
+.org-tree li::after {
+  left: 50%;
+}
+
+.org-tree > li::before,
+.org-tree > li::after {
+  display: none;
+}
+
+.org-tree li:only-child::before,
+.org-tree li:only-child::after {
+  display: none;
+}
+
+.org-tree li:only-child {
+  padding-top: 28px;
+}
+
+.org-tree li:first-child::before,
+.org-tree li:last-child::after {
+  border: 0 none;
+}
+
+.org-tree li:last-child::before {
+  border-right: 2px solid #cbd5e1;
+  border-radius: 0 6px 0 0;
+}
+
+.org-tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.org-tree li > .node-wrap::before {
+  content: "";
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  height: 28px;
+  border-left: 2px solid #cbd5e1;
+}
+
+.node-wrap {
+  display: inline-block;
+  position: relative;
+}
+
+/* For html-to-image: avoid oklch unsupported colors */
+.export-safe * {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
