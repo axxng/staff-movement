@@ -163,7 +163,7 @@ function PageInner({ user }: { user: SessionUser }) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">{user.username}</span>
               <button
-                className="text-xs text-slate-500 hover:text-slate-900"
+                className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
                 onClick={signOut}
               >
                 Sign out
