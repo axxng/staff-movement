@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getRedis, requireAuth } from "@/lib/auth";
 import type { AppState } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -8,10 +8,10 @@ export const runtime = "nodejs";
 const KEY = "staff-movement:state";
 const TS_KEY = "staff-movement:updatedAt";
 
-export async function GET(req: NextRequest) {
-  const result = await requireAuth(req);
-  if (result instanceof Response) return result;
-  const { redis } = result;
+export async function GET() {
+  const redis = getRedis();
+  if (!redis)
+    return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
   try {
     const [state, updatedAt] = await Promise.all([

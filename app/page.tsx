@@ -72,11 +72,14 @@ function UndoRedoButtons() {
   );
 }
 
+const GUEST_USER: SessionUser = { username: "Guest", role: "guest" };
+
 function PageInner({ user }: { user: SessionUser }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("squads");
   const [hydrated, setHydrated] = useState(false);
   const [config, setConfig] = useState<SyncConfig | null>(null);
+  const isGuest = user.role === "guest";
 
   useEffect(() => {
     setHydrated(true);
@@ -86,12 +89,12 @@ function PageInner({ user }: { user: SessionUser }) {
 
   const sync = useSync({ enabled: hydrated, config });
 
-  // If sync gets a 401, redirect to login
+  // If sync gets a 401 and user is not a guest, redirect to login
   useEffect(() => {
-    if (sync.status === "auth-required") {
+    if (sync.status === "auth-required" && !isGuest) {
       router.replace("/login");
     }
-  }, [sync.status, router]);
+  }, [sync.status, router, isGuest]);
 
   const totals = useStore((s) => ({
     staff: Object.keys(s.staff).length,
@@ -129,7 +132,7 @@ function PageInner({ user }: { user: SessionUser }) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar user={user} />
+      {!isGuest && <Sidebar user={user} />}
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="border-b bg-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex gap-1">
@@ -149,27 +152,41 @@ function PageInner({ user }: { user: SessionUser }) {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <HeaderSearch />
-            <UndoRedoButtons />
+            {!isGuest && <UndoRedoButtons />}
             <div className="text-xs text-slate-500">
               {hydrated
                 ? `${totals.staff} staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
                 : "\u2026"}
             </div>
-            <SyncIndicator
-              status={sync.status}
-              lastSyncedAt={sync.lastSyncedAt}
-              onClick={sync.forceSync}
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">{user.username}</span>
-              <button
-                className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
-                onClick={signOut}
-              >
-                Sign out
-              </button>
-            </div>
-            {hydrated && totals.staff === 0 && totals.teams === 0 && (
+            {!isGuest && (
+              <SyncIndicator
+                status={sync.status}
+                lastSyncedAt={sync.lastSyncedAt}
+                onClick={sync.forceSync}
+              />
+            )}
+            {isGuest ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Viewing as guest</span>
+                <button
+                  className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
+                  onClick={() => router.push("/login")}
+                >
+                  Sign in
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">{user.username}</span>
+                <button
+                  className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
+                  onClick={signOut}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+            {!isGuest && hydrated && totals.staff === 0 && totals.teams === 0 && (
               <button
                 className="px-3 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
                 onClick={seedSample}
@@ -177,7 +194,7 @@ function PageInner({ user }: { user: SessionUser }) {
                 Load sample
               </button>
             )}
-            <BackupBar />
+            {!isGuest && <BackupBar />}
           </div>
         </header>
 
@@ -200,7 +217,6 @@ function PageInner({ user }: { user: SessionUser }) {
 }
 
 export default function Home() {
-  const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -215,9 +231,10 @@ export default function Home() {
         setChecking(false);
       })
       .catch(() => {
-        router.replace("/login");
+        setUser(GUEST_USER);
+        setChecking(false);
       });
-  }, [router]);
+  }, []);
 
   if (checking || !user) {
     return (

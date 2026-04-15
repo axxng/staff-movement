@@ -67,5 +67,5 @@ export type AuthUser = {
 
 export type SessionUser = {
   username: string;
-  role: "admin" | "user";
+  role: "admin" | "user" | "guest";
 };

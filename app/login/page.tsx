@@ -119,6 +119,15 @@ export default function LoginPage() {
             accounts later.
           </p>
         )}
+
+        {mode === "login" && (
+          <button
+            className="w-full text-xs text-slate-500 hover:text-slate-900 py-1"
+            onClick={() => router.replace("/")}
+          >
+            Continue as guest (read-only)
+          </button>
+        )}
       </div>
     </div>
   );
