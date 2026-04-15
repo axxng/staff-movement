@@ -69,13 +69,19 @@ type Actions = {
 
 type Store = AppState & Actions;
 
+let _currentActor: string | undefined;
+export function setCurrentActor(actor: string | undefined) {
+  _currentActor = actor;
+}
+
 const recordMovement = (
   state: AppState,
-  m: Omit<Movement, "id" | "timestamp">,
+  m: Omit<Movement, "id" | "timestamp" | "actor">,
 ): Movement[] => {
   const movement: Movement = {
     id: uid(),
     timestamp: Date.now(),
+    actor: _currentActor,
     ...m,
   };
   return [movement, ...state.movements];

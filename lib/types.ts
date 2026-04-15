@@ -41,6 +41,7 @@ export type Movement = {
   id: string;
   timestamp: number;
   type: MovementType;
+  actor?: string;
   staffId?: StaffId;
   teamId?: TeamId;
   fromId?: string | null;

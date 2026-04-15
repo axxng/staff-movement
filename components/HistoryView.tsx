@@ -123,6 +123,9 @@ export default function HistoryView() {
                   </>
                 )}
               </div>
+              {m.actor && (
+                <div className="text-xs text-slate-400 shrink-0">{m.actor}</div>
+              )}
             </div>
           );
         })}

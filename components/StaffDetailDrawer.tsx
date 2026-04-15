@@ -279,6 +279,9 @@ export default function StaffDetailDrawer() {
                             )}
                           </>
                         )}
+                        {m.actor && (
+                          <span className="text-slate-400 ml-1">by {m.actor}</span>
+                        )}
                       </div>
                     </li>
                   );

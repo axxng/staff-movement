@@ -9,7 +9,7 @@ import HistoryView from "@/components/HistoryView";
 import BackupBar from "@/components/BackupBar";
 import SyncIndicator from "@/components/SyncIndicator";
 import StaffDetailDrawer from "@/components/StaffDetailDrawer";
-import { useStore, useTemporal } from "@/lib/store";
+import { useStore, useTemporal, setCurrentActor } from "@/lib/store";
 import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
 import type { SessionUser } from "@/lib/types";
@@ -227,10 +227,12 @@ export default function Home() {
         return res.json();
       })
       .then((data: SessionUser) => {
+        setCurrentActor(data.username);
         setUser(data);
         setChecking(false);
       })
       .catch(() => {
+        setCurrentActor(undefined);
         setUser(GUEST_USER);
         setChecking(false);
       });
