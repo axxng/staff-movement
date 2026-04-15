@@ -57,3 +57,15 @@ export type AppState = {
   roles: Record<RoleId, Role>;
   movements: Movement[];
 };
+
+export type AuthUser = {
+  username: string;
+  passwordHash: string;
+  role: "admin" | "user";
+  createdAt: number;
+};
+
+export type SessionUser = {
+  username: string;
+  role: "admin" | "user";
+};
