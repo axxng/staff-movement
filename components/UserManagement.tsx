@@ -84,7 +84,7 @@ export default function UserManagement({ currentUser }: { currentUser: string })
       <div className="space-y-2">
         <input
           className="w-full border rounded px-2 py-1 text-sm"
-          placeholder="Username"
+          placeholder="Email"
           value={newUsername}
           onChange={(e) => setNewUsername(e.target.value)}
         />

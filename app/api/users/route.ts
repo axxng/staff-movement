@@ -33,7 +33,15 @@ export async function POST(req: NextRequest) {
 
   if (!body.username || !body.password) {
     return NextResponse.json(
-      { error: "Username and password required" },
+      { error: "Email and password required" },
+      { status: 400 },
+    );
+  }
+
+  const username = body.username.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) {
+    return NextResponse.json(
+      { error: "A valid email address is required" },
       { status: 400 },
     );
   }
@@ -46,7 +54,6 @@ export async function POST(req: NextRequest) {
   }
 
   const role = body.role === "admin" ? "admin" : "user";
-  const username = body.username.trim().toLowerCase();
 
   const existing = await getUser(result.redis, username);
   if (existing) {

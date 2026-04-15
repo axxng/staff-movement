@@ -31,7 +31,15 @@ export async function POST(req: NextRequest) {
 
   if (!body.username || !body.password) {
     return NextResponse.json(
-      { error: "Username and password required" },
+      { error: "Email and password required" },
+      { status: 400 },
+    );
+  }
+
+  const email = body.username.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json(
+      { error: "A valid email address is required" },
       { status: 400 },
     );
   }
@@ -45,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const user = await createUser(
     redis,
-    body.username.trim().toLowerCase(),
+    email,
     body.password,
     "admin",
   );

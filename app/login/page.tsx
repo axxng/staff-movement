@@ -81,10 +81,10 @@ export default function LoginPage() {
 
         <div className="space-y-3">
           <input
-            type="text"
+            type="email"
             autoFocus
             className="w-full border rounded px-3 py-2 text-sm"
-            placeholder="Username"
+            placeholder="Email"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
