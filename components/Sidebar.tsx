@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { contrastText } from "@/lib/utils";
+import UserManagement from "@/components/UserManagement";
+import type { SessionUser } from "@/lib/types";
 
-export default function Sidebar() {
+export default function Sidebar({ user }: { user: SessionUser }) {
   const staff = useStore((s) => s.staff);
   const teams = useStore((s) => s.teams);
   const roles = useStore((s) => s.roles);
@@ -28,7 +30,11 @@ export default function Sidebar() {
   const roleList = Object.values(roles);
   const [roleId, setRoleId] = useState<string>(roleList[0]?.id ?? "");
 
-  const [openSection, setOpenSection] = useState<"staff" | "roles" | "membership">("staff");
+  const sections = user.role === "admin"
+    ? (["staff", "roles", "membership", "users"] as const)
+    : (["staff", "roles", "membership"] as const);
+  type Section = (typeof sections)[number];
+  const [openSection, setOpenSection] = useState<Section>("staff");
 
   return (
     <aside className="w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto">
@@ -38,7 +44,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex border-b text-xs">
-        {(["staff", "roles", "membership"] as const).map((k) => (
+        {sections.map((k) => (
           <button
             key={k}
             className={`flex-1 px-2 py-2 capitalize ${
@@ -246,6 +252,9 @@ export default function Sidebar() {
             <div className="text-slate-400">Add staff first.</div>
           )}
         </div>
+      )}
+      {openSection === "users" && (
+        <UserManagement currentUser={user.username} />
       )}
     </aside>
   );
