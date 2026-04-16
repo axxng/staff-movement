@@ -13,30 +13,39 @@ import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
-import type { StaffId } from "@/lib/types";
+import type { Staff, Role, StaffId } from "@/lib/types";
 
 type Node = {
   id: StaffId;
   children: Node[];
 };
 
-function buildTree(staffMap: Record<string, { id: string; managerId: string | null }>): {
-  roots: Node[];
-} {
+function buildTree(
+  staffMap: Record<string, Staff>,
+  roles: Record<string, Role>,
+): { roots: Node[] } {
   const childrenOf: Record<string, StaffId[]> = {};
   const all = Object.values(staffMap);
   for (const s of all) {
     const key = s.managerId ?? "__root__";
     (childrenOf[key] ??= []).push(s.id);
   }
+  const roleOrder = Object.keys(roles);
+  const sortByRoleThenName = (ids: StaffId[]) =>
+    ids.slice().sort((a, b) => {
+      const sa = staffMap[a];
+      const sb = staffMap[b];
+      if (!sa || !sb) return 0;
+      const ra = roleOrder.indexOf(sa.roleId);
+      const rb = roleOrder.indexOf(sb.roleId);
+      if (ra !== rb) return (ra === -1 ? 999 : ra) - (rb === -1 ? 999 : rb);
+      return sa.name.localeCompare(sb.name);
+    });
   const build = (id: StaffId): Node => ({
     id,
-    children: (childrenOf[id] ?? [])
-      .slice()
-      .sort((a, b) => staffMap[a].id.localeCompare(staffMap[b].id))
-      .map(build),
+    children: sortByRoleThenName(childrenOf[id] ?? []).map(build),
   });
-  const roots = (childrenOf["__root__"] ?? []).map(build);
+  const roots = sortByRoleThenName(childrenOf["__root__"] ?? []).map(build);
   return { roots };
 }
 
@@ -104,10 +113,11 @@ function TreeNode({ node }: { node: Node }) {
 
 export default function ReportingView() {
   const staff = useStore((s) => s.staff);
+  const roles = useStore((s) => s.roles);
   const setManager = useStore((s) => s.setManager);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const { roots } = useMemo(() => buildTree(staff), [staff]);
+  const { roots } = useMemo(() => buildTree(staff, roles), [staff, roles]);
 
   // Separate roots into org leaders (have reports) and unassigned (no reports, no manager)
   const { leaders, unassigned } = useMemo(() => {
