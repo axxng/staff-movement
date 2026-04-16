@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
+import { useSearch } from "@/lib/search";
 import { contrastText } from "@/lib/utils";
 import UserManagement from "@/components/UserManagement";
 import type { SessionUser } from "@/lib/types";
@@ -23,16 +24,29 @@ export default function Sidebar({ user }: { user: SessionUser }) {
 
   const addStaffToTeam = useStore((s) => s.addStaffToTeam);
   const removeStaffFromTeam = useStore((s) => s.removeStaffFromTeam);
+  const removeTagFromAll = useStore((s) => s.removeTagFromAll);
 
   const selectStaff = useUI((s) => s.selectStaff);
+  const { setQuery } = useSearch();
 
   const [name, setName] = useState("");
+  const [newTag, setNewTag] = useState("");
   const roleList = Object.values(roles);
   const [roleId, setRoleId] = useState<string>(roleList[0]?.id ?? "");
 
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of Object.values(staff)) {
+      for (const t of s.tags ?? []) {
+        counts[t] = (counts[t] ?? 0) + 1;
+      }
+    }
+    return Object.entries(counts).sort(([a], [b]) => a.localeCompare(b));
+  }, [staff]);
+
   const sections = user.role === "admin"
-    ? (["staff", "roles", "membership", "users"] as const)
-    : (["staff", "roles", "membership"] as const);
+    ? (["staff", "roles", "membership", "tags", "users"] as const)
+    : (["staff", "roles", "membership", "tags"] as const);
   type Section = (typeof sections)[number];
   const [openSection, setOpenSection] = useState<Section>("staff");
 
@@ -251,6 +265,41 @@ export default function Sidebar({ user }: { user: SessionUser }) {
           {Object.values(staff).length === 0 && (
             <div className="text-slate-400">Add staff first.</div>
           )}
+        </div>
+      )}
+      {openSection === "tags" && (
+        <div className="p-4 space-y-3 text-xs">
+          <p className="text-slate-400">
+            Tags are created by adding them to staff in their detail drawer.
+            Click a tag to search.
+          </p>
+
+          <div className="border-t pt-2 space-y-1 max-h-[60vh] overflow-y-auto">
+            {tagCounts.length === 0 && (
+              <div className="text-slate-400">No tags yet.</div>
+            )}
+            {tagCounts.map(([tag, count]) => (
+              <div key={tag} className="flex items-center justify-between gap-1">
+                <button
+                  className="flex-1 text-left px-1 py-0.5 rounded hover:bg-slate-100 truncate"
+                  onClick={() => setQuery(tag)}
+                  title={`Search for "${tag}"`}
+                >
+                  <span className="font-medium">{tag}</span>
+                  <span className="text-slate-400 ml-1">({count})</span>
+                </button>
+                <button
+                  className="text-red-500 hover:bg-red-50 px-1 rounded"
+                  onClick={() => {
+                    if (confirm(`Remove tag "${tag}" from all ${count} staff?`))
+                      removeTagFromAll(tag);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {openSection === "users" && (
