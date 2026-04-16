@@ -18,6 +18,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
+import { useReadOnly } from "@/lib/readonly";
 import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
@@ -66,6 +67,7 @@ function TeamBox({ team }: { team: Tree }) {
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
   const { hasQuery, matchedTeams } = useSearch();
+  const readOnly = useReadOnly();
   const exportRef = useRef<HTMLDivElement>(null);
 
   const setDroppable = useDroppable({
@@ -110,15 +112,17 @@ function TeamBox({ team }: { team: Tree }) {
       } ${dimmed ? "opacity-40" : ""}`}
     >
       <div className="flex items-center gap-1 mb-2">
-        <button
-          {...sortAttributes}
-          {...sortListeners}
-          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 px-0.5"
-          title="Drag to reorder"
-        >
-          ⠿
-        </button>
-        {editing ? (
+        {!readOnly && (
+          <button
+            {...sortAttributes}
+            {...sortListeners}
+            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 px-0.5"
+            title="Drag to reorder"
+          >
+            ⠿
+          </button>
+        )}
+        {!readOnly && editing ? (
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -140,13 +144,13 @@ function TeamBox({ team }: { team: Tree }) {
             className="text-sm font-semibold flex-1 px-1 border rounded"
           />
         ) : (
-          <button
+          <span
             className="text-sm font-semibold flex-1 text-left truncate"
-            onDoubleClick={() => setEditing(true)}
-            title="Double-click to rename"
+            onDoubleClick={readOnly ? undefined : () => setEditing(true)}
+            title={readOnly ? undefined : "Double-click to rename"}
           >
             {team.name} ({team.memberIds.length})
-          </button>
+          </span>
         )}
         <ExportButton
           targetRef={exportRef}
@@ -155,27 +159,31 @@ function TeamBox({ team }: { team: Tree }) {
           label="PNG"
           title="Export this team subtree as PNG"
         />
-        <button
-          className="text-xs px-1.5 py-0.5 rounded hover:bg-slate-200"
-          onClick={() => {
-            const name = prompt("Sub-team name?");
-            if (name?.trim()) addTeam({ name: name.trim(), parentId: team.id });
-          }}
-          title="Add sub-team"
-        >
-          +sub
-        </button>
-        <button
-          className="text-xs px-1.5 py-0.5 rounded hover:bg-red-100 text-red-600"
-          onClick={() => {
-            if (confirm(`Delete team "${team.name}"? Sub-teams will reattach to its parent.`)) {
-              deleteTeam(team.id);
-            }
-          }}
-          title="Delete team"
-        >
-          ×
-        </button>
+        {!readOnly && (
+          <button
+            className="text-xs px-1.5 py-0.5 rounded hover:bg-slate-200"
+            onClick={() => {
+              const name = prompt("Sub-team name?");
+              if (name?.trim()) addTeam({ name: name.trim(), parentId: team.id });
+            }}
+            title="Add sub-team"
+          >
+            +sub
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            className="text-xs px-1.5 py-0.5 rounded hover:bg-red-100 text-red-600"
+            onClick={() => {
+              if (confirm(`Delete team "${team.name}"? Sub-teams will reattach to its parent.`)) {
+                deleteTeam(team.id);
+              }
+            }}
+            title="Delete team"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5 min-h-[36px]">
@@ -190,16 +198,18 @@ function TeamBox({ team }: { team: Tree }) {
               payload={{ fromTeamId: team.id }}
               compact
             />
-            <button
-              className="hidden group-hover:flex absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] items-center justify-center"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Remove from ${team.name}?`)) removeStaffFromTeam(sid, team.id);
-              }}
-              title="Remove from team"
-            >
-              ×
-            </button>
+            {!readOnly && (
+              <button
+                className="hidden group-hover:flex absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] items-center justify-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Remove from ${team.name}?`)) removeStaffFromTeam(sid, team.id);
+                }}
+                title="Remove from team"
+              >
+                ×
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -271,6 +281,7 @@ export default function SquadsView() {
   const moveStaffBetweenTeams = useStore((s) => s.moveStaffBetweenTeams);
   const reorderTeams = useStore((s) => s.reorderTeams);
   const reparentTeam = useStore((s) => s.reparentTeam);
+  const readOnly = useReadOnly();
   const exportRef = useRef<HTMLDivElement>(null);
   const [activeKind, setActiveKind] = useState<"staff" | "team" | null>(null);
 
@@ -380,15 +391,17 @@ export default function SquadsView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            className="px-3 py-1.5 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700"
-            onClick={() => {
-              const name = prompt("Top-level team name?");
-              if (name?.trim()) addTeam({ name: name.trim(), parentId: null });
-            }}
-          >
-            + Team
-          </button>
+          {!readOnly && (
+            <button
+              className="px-3 py-1.5 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700"
+              onClick={() => {
+                const name = prompt("Top-level team name?");
+                if (name?.trim()) addTeam({ name: name.trim(), parentId: null });
+              }}
+            >
+              + Team
+            </button>
+          )}
           <ExportButton targetRef={exportRef} filename="squads" />
         </div>
       </div>

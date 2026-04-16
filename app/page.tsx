@@ -13,6 +13,7 @@ import { useStore, useTemporal, setCurrentActor } from "@/lib/store";
 import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
 import { useUI } from "@/lib/ui";
+import { ReadOnlyProvider } from "@/lib/readonly";
 import type { SessionUser } from "@/lib/types";
 
 type Tab = "reporting" | "squads" | "history";
@@ -279,8 +280,10 @@ export default function Home() {
   }
 
   return (
-    <SearchProvider>
-      <PageInner user={user} />
-    </SearchProvider>
+    <ReadOnlyProvider readOnly={user.role === "guest"}>
+      <SearchProvider>
+        <PageInner user={user} />
+      </SearchProvider>
+    </ReadOnlyProvider>
   );
 }

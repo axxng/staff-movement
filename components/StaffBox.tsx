@@ -4,6 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
+import { useReadOnly } from "@/lib/readonly";
 import { contrastText } from "@/lib/utils";
 
 type Props = {
@@ -23,10 +24,12 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
   const toggleMultiSelect = useUI((s) => s.toggleMultiSelect);
   const addToMultiSelect = useUI((s) => s.addToMultiSelect);
   const { hasQuery, matchedStaff } = useSearch();
+  const readOnly = useReadOnly();
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: dragId,
     data: { staffId, ...payload },
+    disabled: readOnly,
   });
 
   if (!staff) return null;
@@ -63,7 +66,7 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
       {...attributes}
       onClick={handleClick}
       onDragStart={handleDragStart}
-      className={`select-none cursor-grab active:cursor-grabbing rounded-lg shadow-sm border transition-all ${
+      className={`select-none ${readOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing"} rounded-lg shadow-sm border transition-all ${
         compact ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm"
       } ${isDragging ? "opacity-40" : ""} ${dimmed ? "opacity-25" : ""} ${
         highlighted ? "ring-2 ring-amber-400 ring-offset-1" : ""

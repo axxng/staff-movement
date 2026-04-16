@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { movementTypeLabel, useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { contrastText, formatDate } from "@/lib/utils";
+import { useReadOnly } from "@/lib/readonly";
 
 export default function StaffDetailDrawer() {
   const selectedStaffId = useUI((s) => s.selectedStaffId);
   const selectStaff = useUI((s) => s.selectStaff);
+  const readOnly = useReadOnly();
 
   const staff = useStore((s) =>
     selectedStaffId ? s.staff[selectedStaffId] ?? null : null,
@@ -110,15 +112,21 @@ export default function StaffDetailDrawer() {
           style={{ backgroundColor: bg, color: fg }}
         >
           <div className="min-w-0">
-            <input
-              className="text-lg font-semibold bg-transparent w-full focus:outline-none focus:bg-black/10 rounded px-1"
-              defaultValue={staff.name}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && v !== staff.name) renameStaff(staff.id, v);
-              }}
-              style={{ color: fg }}
-            />
+            {readOnly ? (
+              <div className="text-lg font-semibold px-1" style={{ color: fg }}>
+                {staff.name}
+              </div>
+            ) : (
+              <input
+                className="text-lg font-semibold bg-transparent w-full focus:outline-none focus:bg-black/10 rounded px-1"
+                defaultValue={staff.name}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== staff.name) renameStaff(staff.id, v);
+                }}
+                style={{ color: fg }}
+              />
+            )}
             <div className="text-xs opacity-90 px-1">{role?.label ?? "—"}</div>
           </div>
           <button
@@ -141,6 +149,7 @@ export default function StaffDetailDrawer() {
               className="w-full border rounded px-2 py-1 text-sm"
               value={staff.roleId}
               onChange={(e) => setRole(staff.id, e.target.value)}
+              disabled={readOnly}
             >
               {roleList.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -160,6 +169,7 @@ export default function StaffDetailDrawer() {
               onChange={(e) =>
                 setManager(staff.id, e.target.value || null)
               }
+              disabled={readOnly}
             >
               <option value="">— No manager —</option>
               {Object.values(allStaff)
@@ -229,35 +239,39 @@ export default function StaffDetailDrawer() {
                     className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100"
                   >
                     <span className="flex-1 text-sm">{teamPath(t.id)}</span>
-                    <button
-                      className="text-[10px] text-red-500 hover:bg-red-50 px-1 rounded"
-                      onClick={() => {
-                        if (confirm(`Remove ${staff.name} from this team?`)) removeStaffFromTeam(staff.id, t.id);
-                      }}
-                      title="Remove from team"
-                    >
-                      Remove
-                    </button>
+                    {!readOnly && (
+                      <button
+                        className="text-[10px] text-red-500 hover:bg-red-50 px-1 rounded"
+                        onClick={() => {
+                          if (confirm(`Remove ${staff.name} from this team?`)) removeStaffFromTeam(staff.id, t.id);
+                        }}
+                        title="Remove from team"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
-            <select
-              className="w-full text-xs border rounded px-2 py-1"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) addStaffToTeam(staff.id, e.target.value);
-              }}
-            >
-              <option value="">+ Add to team…</option>
-              {Object.values(allTeams)
-                .filter((t) => !t.memberIds.includes(staff.id))
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {teamPath(t.id)}
-                  </option>
-                ))}
-            </select>
+            {!readOnly && (
+              <select
+                className="w-full text-xs border rounded px-2 py-1"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addStaffToTeam(staff.id, e.target.value);
+                }}
+              >
+                <option value="">+ Add to team…</option>
+                {Object.values(allTeams)
+                  .filter((t) => !t.memberIds.includes(staff.id))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {teamPath(t.id)}
+                    </option>
+                  ))}
+              </select>
+            )}
           </section>
 
           {/* Tags */}
@@ -266,65 +280,72 @@ export default function StaffDetailDrawer() {
               Tags
             </h3>
             <div className="flex flex-wrap gap-1 mb-2">
+              {(staff.tags ?? []).length === 0 && (
+                <span className="text-xs text-slate-400 italic">None</span>
+              )}
               {(staff.tags ?? []).map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-200 text-xs"
                 >
                   {tag}
-                  <button
-                    className="text-slate-400 hover:text-red-500"
-                    onClick={() => removeTag(staff.id, tag)}
-                  >
-                    ×
-                  </button>
+                  {!readOnly && (
+                    <button
+                      className="text-slate-400 hover:text-red-500"
+                      onClick={() => removeTag(staff.id, tag)}
+                    >
+                      ×
+                    </button>
+                  )}
                 </span>
               ))}
             </div>
-            <div className="relative">
-              <input
-                className="w-full text-xs border rounded px-2 py-1"
-                placeholder="Add tag..."
-                value={tagInput}
-                onChange={(e) => {
-                  setTagInput(e.target.value);
-                  setShowTagSuggestions(true);
-                }}
-                onFocus={() => setShowTagSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && tagInput.trim()) {
-                    addTag(staff.id, tagInput);
-                    setTagInput("");
-                    setShowTagSuggestions(false);
-                  }
-                }}
-              />
-              {showTagSuggestions && tagInput.trim() && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-32 overflow-y-auto">
-                  {allTags
-                    .filter(
-                      (t) =>
-                        t.includes(tagInput.trim().toLowerCase()) &&
-                        !(staff.tags ?? []).includes(t),
-                    )
-                    .map((t) => (
-                      <button
-                        key={t}
-                        className="block w-full text-left text-xs px-2 py-1 hover:bg-slate-100"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          addTag(staff.id, t);
-                          setTagInput("");
-                          setShowTagSuggestions(false);
-                        }}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
+            {!readOnly && (
+              <div className="relative">
+                <input
+                  className="w-full text-xs border rounded px-2 py-1"
+                  placeholder="Add tag..."
+                  value={tagInput}
+                  onChange={(e) => {
+                    setTagInput(e.target.value);
+                    setShowTagSuggestions(true);
+                  }}
+                  onFocus={() => setShowTagSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && tagInput.trim()) {
+                      addTag(staff.id, tagInput);
+                      setTagInput("");
+                      setShowTagSuggestions(false);
+                    }
+                  }}
+                />
+                {showTagSuggestions && tagInput.trim() && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-32 overflow-y-auto">
+                    {allTags
+                      .filter(
+                        (t) =>
+                          t.includes(tagInput.trim().toLowerCase()) &&
+                          !(staff.tags ?? []).includes(t),
+                      )
+                      .map((t) => (
+                        <button
+                          key={t}
+                          className="block w-full text-left text-xs px-2 py-1 hover:bg-slate-100"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            addTag(staff.id, t);
+                            setTagInput("");
+                            setShowTagSuggestions(false);
+                          }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* History */}
@@ -378,17 +399,19 @@ export default function StaffDetailDrawer() {
         </div>
 
         <footer className="border-t px-5 py-3 flex justify-between items-center">
-          <button
-            className="text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded"
-            onClick={() => {
-              if (confirm(`Delete ${staff.name}? This cannot be undone via UI.`)) {
-                deleteStaff(staff.id);
-                selectStaff(null);
-              }
-            }}
-          >
-            Delete staff
-          </button>
+          {!readOnly ? (
+            <button
+              className="text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded"
+              onClick={() => {
+                if (confirm(`Delete ${staff.name}? This cannot be undone via UI.`)) {
+                  deleteStaff(staff.id);
+                  selectStaff(null);
+                }
+              }}
+            >
+              Delete staff
+            </button>
+          ) : <div />}
           <button
             className="text-xs text-slate-500 hover:text-slate-900"
             onClick={() => selectStaff(null)}
