@@ -169,11 +169,13 @@ export default function ReportingView() {
             {leaders.map((r) => (
               <div
                 key={r.id}
-                className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 overflow-auto"
+                className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 overflow-x-auto"
               >
-                <ul className="org-tree flex flex-wrap gap-3 justify-center">
-                  <TreeNode node={r} />
-                </ul>
+                <div className="min-w-fit w-full flex justify-center">
+                  <ul className="org-tree inline-flex gap-3">
+                    <TreeNode node={r} />
+                  </ul>
+                </div>
               </div>
             ))}
 
