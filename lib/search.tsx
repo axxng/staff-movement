@@ -26,7 +26,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     if (!q) return { matchedStaff: ms, matchedTeams: mt };
     for (const s of Object.values(staff)) {
       const role = roles[s.roleId];
-      const blob = `${s.name} ${role?.label ?? ""}`.toLowerCase();
+      const tagStr = (s.tags ?? []).join(" ");
+      const blob = `${s.name} ${role?.label ?? ""} ${tagStr}`.toLowerCase();
       if (blob.includes(q)) ms.add(s.id);
     }
     for (const t of Object.values(teams)) {
