@@ -158,7 +158,7 @@ function PageInner({ user }: { user: SessionUser }) {
           <div className="flex items-center gap-2">
             {!isGuest && (
               <button
-                className="xl:hidden text-slate-600 hover:text-slate-900 p-1"
+                className="text-slate-600 hover:text-slate-900 p-1"
                 onClick={() => setSidebarOpen(true)}
                 title="Open sidebar"
               >
