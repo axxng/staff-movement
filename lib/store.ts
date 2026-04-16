@@ -356,6 +356,7 @@ export const useStore = create<Store>()(
               {
                 id: uid(),
                 timestamp: Date.now(),
+                actor: _currentActor,
                 type: "team_leave",
                 staffId,
                 teamId: fromTeamId,
@@ -365,6 +366,7 @@ export const useStore = create<Store>()(
               {
                 id: uid(),
                 timestamp: Date.now() + 1,
+                actor: _currentActor,
                 type: "team_join",
                 staffId,
                 teamId: toTeamId,
