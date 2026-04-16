@@ -59,7 +59,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
           onClick={onClose}
         />
       )}
-      <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
+      <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto overflow-x-hidden
         fixed xl:static z-50 transition-transform duration-200
         ${open ? "translate-x-0" : "-translate-x-full xl:translate-x-0"}`}>
         <div className="p-4 border-b flex items-center justify-between">
@@ -108,7 +108,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
             />
             <div className="flex gap-2">
               <select
-                className="text-sm border rounded px-2 py-1 flex-1"
+                className="text-sm border rounded px-2 py-1 flex-1 min-w-0"
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value)}
               >
@@ -119,7 +119,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                 ))}
               </select>
               <button
-                className="text-sm bg-slate-900 text-white rounded px-3 py-1"
+                className="text-sm bg-slate-900 text-white rounded px-3 py-1 shrink-0"
                 onClick={() => {
                   if (name.trim()) {
                     addStaff({ name: name.trim(), roleId });
