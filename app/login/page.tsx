@@ -69,7 +69,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white rounded-xl shadow-lg p-8 w-[380px] space-y-5">
+      <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 w-full max-w-[380px] mx-4 space-y-5">
         <div>
           <h1 className="text-lg font-bold">Staff Movement</h1>
           <p className="text-xs text-slate-500 mt-1">

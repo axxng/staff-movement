@@ -8,7 +8,7 @@ import { contrastText } from "@/lib/utils";
 import UserManagement from "@/components/UserManagement";
 import type { SessionUser } from "@/lib/types";
 
-export default function Sidebar({ user }: { user: SessionUser }) {
+export default function Sidebar({ user, open, onClose }: { user: SessionUser; open?: boolean; onClose?: () => void }) {
   const staff = useStore((s) => s.staff);
   const teams = useStore((s) => s.teams);
   const roles = useStore((s) => s.roles);
@@ -51,11 +51,29 @@ export default function Sidebar({ user }: { user: SessionUser }) {
   const [openSection, setOpenSection] = useState<Section>("staff");
 
   return (
-    <aside className="w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto">
-      <div className="p-4 border-b">
-        <h1 className="text-base font-bold">Staff Movement</h1>
-        <p className="text-[11px] text-slate-500">Org chart & squad tracker</p>
-      </div>
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
+        fixed lg:static z-50 transition-transform duration-200
+        ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold">Staff Movement</h1>
+            <p className="text-[11px] text-slate-500">Org chart & squad tracker</p>
+          </div>
+          <button
+            className="lg:hidden text-slate-400 hover:text-slate-600 text-xl"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
 
       <nav className="flex border-b text-xs">
         {sections.map((k) => (
@@ -306,5 +324,6 @@ export default function Sidebar({ user }: { user: SessionUser }) {
         <UserManagement currentUser={user.username} />
       )}
     </aside>
+    </>
   );
 }

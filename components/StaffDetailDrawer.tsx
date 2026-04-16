@@ -104,7 +104,7 @@ export default function StaffDetailDrawer() {
         className="flex-1 bg-black/30"
         onClick={() => selectStaff(null)}
       />
-      <aside className="w-[420px] max-w-full h-full bg-white shadow-2xl flex flex-col">
+      <aside className="w-full sm:w-[420px] sm:max-w-full h-full bg-white shadow-2xl flex flex-col">
         <header
           className="px-5 py-4 flex items-start justify-between gap-3"
           style={{ backgroundColor: bg, color: fg }}

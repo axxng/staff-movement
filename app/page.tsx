@@ -21,8 +21,8 @@ function HeaderSearch() {
   const { query, setQuery } = useSearch();
   return (
     <input
-      className="text-sm border rounded px-3 py-1.5 w-56"
-      placeholder="Search people or teams..."
+      className="text-sm border rounded px-3 py-1.5 w-40 sm:w-56"
+      placeholder="Search..."
       value={query}
       onChange={(e) => setQuery(e.target.value)}
     />
@@ -98,6 +98,7 @@ function PageInner({ user }: { user: SessionUser }) {
   const [tab, setTab] = useState<Tab>("squads");
   const [hydrated, setHydrated] = useState(false);
   const [config, setConfig] = useState<SyncConfig | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isGuest = user.role === "guest";
 
   useEffect(() => {
@@ -151,10 +152,21 @@ function PageInner({ user }: { user: SessionUser }) {
 
   return (
     <div className="flex min-h-screen">
-      {!isGuest && <Sidebar user={user} />}
+      {!isGuest && <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="border-b bg-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex gap-1">
+        <header className="border-b bg-white px-4 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            {!isGuest && (
+              <button
+                className="lg:hidden text-slate-600 hover:text-slate-900 p-1"
+                onClick={() => setSidebarOpen(true)}
+                title="Open sidebar"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
             {(["squads", "reporting", "history"] as const).map((t) => (
               <button
                 key={t}
@@ -169,11 +181,11 @@ function PageInner({ user }: { user: SessionUser }) {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <SelectionBadge />
             <HeaderSearch />
             {!isGuest && <UndoRedoButtons />}
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 hidden sm:block">
               {hydrated
                 ? `${totals.staff} staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
                 : "\u2026"}
@@ -197,7 +209,7 @@ function PageInner({ user }: { user: SessionUser }) {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">{user.username}</span>
+                <span className="text-xs text-slate-500 hidden sm:inline">{user.username}</span>
                 <button
                   className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-100"
                   onClick={signOut}
@@ -218,7 +230,7 @@ function PageInner({ user }: { user: SessionUser }) {
           </div>
         </header>
 
-        <section className="flex-1 p-6 overflow-auto">
+        <section className="flex-1 p-3 sm:p-6 overflow-auto">
           {!hydrated ? (
             <div className="text-slate-400 text-sm">Loading...</div>
           ) : tab === "squads" ? (
