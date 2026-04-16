@@ -55,20 +55,20 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
       {/* Mobile backdrop */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/30 z-40 xl:hidden"
           onClick={onClose}
         />
       )}
-      <aside className={`w-72 sm:w-64 lg:w-60 xl:w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
-        fixed lg:static z-50 transition-transform duration-200
-        ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
+        fixed xl:static z-50 transition-transform duration-200
+        ${open ? "translate-x-0" : "-translate-x-full xl:translate-x-0"}`}>
         <div className="p-4 border-b flex items-center justify-between">
           <div>
             <h1 className="text-base font-bold">Staff Movement</h1>
             <p className="text-[11px] text-slate-500">Org chart & squad tracker</p>
           </div>
           <button
-            className="lg:hidden text-slate-400 hover:text-slate-600 text-xl"
+            className="xl:hidden text-slate-400 hover:text-slate-600 text-xl"
             onClick={onClose}
           >
             ×
@@ -159,7 +159,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       title="Double-click to open details"
                     />
                     <select
-                      className="text-[10px] border rounded px-0.5 max-w-[90px] truncate"
+                      className="text-[10px] border rounded px-0.5"
                       value={s.roleId}
                       onChange={(e) => setRole(s.id, e.target.value)}
                     >
