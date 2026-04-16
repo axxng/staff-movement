@@ -17,6 +17,7 @@ type Props = {
 export default function StaffBox({ staffId, dragId, payload, compact, onClick }: Props) {
   const staff = useStore((s) => s.staff[staffId]);
   const role = useStore((s) => (staff ? s.roles[staff.roleId] : undefined));
+  const tags = useStore((s) => s.staff[staffId]?.tags ?? []);
   const selectStaff = useUI((s) => s.selectStaff);
   const isMultiSelected = useUI((s) => s.multiSelected.has(staffId));
   const toggleMultiSelect = useUI((s) => s.toggleMultiSelect);
@@ -73,6 +74,21 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
       <div className="font-semibold leading-tight whitespace-nowrap">{staff.name}</div>
       {!compact && role && (
         <div className="text-[10px] opacity-80 leading-tight">{role.label}</div>
+      )}
+      {!compact && tags.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 mt-0.5">
+          {tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="text-[8px] px-1 rounded bg-black/15"
+            >
+              {tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span className="text-[8px] px-1 opacity-60">+{tags.length - 3}</span>
+          )}
+        </div>
       )}
     </div>
   );
