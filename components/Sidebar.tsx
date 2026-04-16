@@ -55,31 +55,31 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
       {/* Mobile backdrop */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/30 z-40"
+          className="fixed inset-0 bg-black/30 z-40 xl:hidden"
           onClick={onClose}
         />
       )}
       <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
-        fixed z-50 transition-transform duration-200
-        ${open ? "translate-x-0" : "-translate-x-full"}`}>
+        fixed xl:static z-50 transition-transform duration-200
+        ${open ? "translate-x-0" : "-translate-x-full xl:translate-x-0"}`}>
         <div className="p-4 border-b flex items-center justify-between">
           <div>
             <h1 className="text-base font-bold">Staff Movement</h1>
             <p className="text-[11px] text-slate-500">Org chart & squad tracker</p>
           </div>
           <button
-            className="text-slate-400 hover:text-slate-600 text-xl"
+            className="xl:hidden text-slate-400 hover:text-slate-600 text-xl"
             onClick={onClose}
           >
             ×
           </button>
         </div>
 
-      <nav className="flex border-b text-xs overflow-x-auto">
+      <nav className="flex border-b text-[11px] overflow-x-auto">
         {sections.map((k) => (
           <button
             key={k}
-            className={`flex-1 min-w-0 px-1.5 py-2 capitalize whitespace-nowrap ${
+            className={`px-2 py-2 capitalize whitespace-nowrap ${
               openSection === k
                 ? "border-b-2 border-slate-900 font-semibold"
                 : "text-slate-500"
@@ -141,42 +141,46 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
               .map((s) => {
                 const r = roles[s.roleId];
                 return (
-                  <div key={s.id} className="flex items-center gap-1 text-xs">
-                    <button
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: r?.color ?? "#999" }}
-                      onClick={() => selectStaff(s.id)}
-                      title="Open details"
-                    />
-                    <input
-                      className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
-                      defaultValue={s.name}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== s.name) renameStaff(s.id, v);
-                      }}
-                      onDoubleClick={() => selectStaff(s.id)}
-                      title="Double-click to open details"
-                    />
-                    <select
-                      className="text-[10px] border rounded px-0.5"
-                      value={s.roleId}
-                      onChange={(e) => setRole(s.id, e.target.value)}
-                    >
-                      {roleList.map((rr) => (
-                        <option key={rr.id} value={rr.id}>
-                          {rr.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="text-red-500 hover:bg-red-50 px-1 rounded"
-                      onClick={() => {
-                        if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
-                      }}
-                    >
-                      ×
-                    </button>
+                  <div key={s.id} className="text-xs space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: r?.color ?? "#999" }}
+                        onClick={() => selectStaff(s.id)}
+                        title="Open details"
+                      />
+                      <input
+                        className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
+                        defaultValue={s.name}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== s.name) renameStaff(s.id, v);
+                        }}
+                        onDoubleClick={() => selectStaff(s.id)}
+                        title="Double-click to open details"
+                      />
+                      <button
+                        className="text-red-500 hover:bg-red-50 px-1 rounded shrink-0"
+                        onClick={() => {
+                          if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="pl-4">
+                      <select
+                        className="text-[10px] border rounded px-0.5 w-full"
+                        value={s.roleId}
+                        onChange={(e) => setRole(s.id, e.target.value)}
+                      >
+                        {roleList.map((rr) => (
+                          <option key={rr.id} value={rr.id}>
+                            {rr.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 );
               })}
