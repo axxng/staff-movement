@@ -14,9 +14,26 @@ import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
-import type { Team, TeamId } from "@/lib/types";
+import type { Team, TeamId, Staff, Role } from "@/lib/types";
 
 type Tree = Team & { children: Tree[] };
+
+function sortMembersByRoleThenName(
+  memberIds: string[],
+  staff: Record<string, Staff>,
+  roles: Record<string, Role>,
+): string[] {
+  const roleOrder = Object.keys(roles);
+  return [...memberIds].sort((a, b) => {
+    const sa = staff[a];
+    const sb = staff[b];
+    if (!sa || !sb) return 0;
+    const ra = roleOrder.indexOf(sa.roleId);
+    const rb = roleOrder.indexOf(sb.roleId);
+    if (ra !== rb) return (ra === -1 ? 999 : ra) - (rb === -1 ? 999 : rb);
+    return sa.name.localeCompare(sb.name);
+  });
+}
 
 function buildForest(teams: Record<TeamId, Team>): Tree[] {
   const childrenOf: Record<string, TeamId[]> = {};
@@ -33,6 +50,8 @@ function buildForest(teams: Record<TeamId, Team>): Tree[] {
 
 function TeamBox({ team }: { team: Tree }) {
   const removeStaffFromTeam = useStore((s) => s.removeStaffFromTeam);
+  const allStaff = useStore((s) => s.staff);
+  const allRoles = useStore((s) => s.roles);
   const renameTeam = useStore((s) => s.renameTeam);
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
@@ -126,7 +145,7 @@ function TeamBox({ team }: { team: Tree }) {
         {team.memberIds.length === 0 && (
           <div className="text-xs text-slate-400 italic">Drop staff here</div>
         )}
-        {team.memberIds.map((sid) => (
+        {sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => (
           <div key={sid} className="relative group">
             <StaffBox
               staffId={sid}
