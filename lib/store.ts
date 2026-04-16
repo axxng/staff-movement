@@ -100,7 +100,7 @@ export const useStore = create<Store>()(
       addStaff: ({ name, roleId, managerId = null }) => {
         const id = uid();
         set((state) => {
-          const staff: Staff = { id, name, roleId, managerId };
+          const staff: Staff = { id, name, roleId, managerId, tags: [] };
           return {
             staff: { ...state.staff, [id]: staff },
             movements: recordMovement(state, {
@@ -210,7 +210,7 @@ export const useStore = create<Store>()(
       addTeam: ({ name, parentId = null }) => {
         const id = uid();
         set((state) => {
-          const team: Team = { id, name, parentId, memberIds: [] };
+          const team: Team = { id, name, parentId, memberIds: [], order: 0 };
           return {
             teams: { ...state.teams, [id]: team },
             movements: recordMovement(state, {
@@ -483,5 +483,7 @@ export const movementTypeLabel = (t: MovementType): string => {
     case "team_reparent": return "Team moved";
     case "team_join": return "Joined team";
     case "team_leave": return "Left team";
+    case "tag_add": return "Tag added";
+    case "tag_remove": return "Tag removed";
   }
 };

@@ -13,6 +13,7 @@ export type Staff = {
   name: string;
   roleId: RoleId;
   managerId: StaffId | null;
+  tags: string[];
 };
 
 export type TeamId = string;
@@ -22,6 +23,7 @@ export type Team = {
   name: string;
   parentId: TeamId | null;
   memberIds: StaffId[];
+  order: number;
 };
 
 export type MovementType =
@@ -35,7 +37,9 @@ export type MovementType =
   | "team_rename"
   | "team_reparent"
   | "team_join"
-  | "team_leave";
+  | "team_leave"
+  | "tag_add"
+  | "tag_remove";
 
 export type Movement = {
   id: string;
