@@ -231,7 +231,9 @@ export default function StaffDetailDrawer() {
                     <span className="flex-1 text-sm">{teamPath(t.id)}</span>
                     <button
                       className="text-[10px] text-red-500 hover:bg-red-50 px-1 rounded"
-                      onClick={() => removeStaffFromTeam(staff.id, t.id)}
+                      onClick={() => {
+                        if (confirm(`Remove ${staff.name} from this team?`)) removeStaffFromTeam(staff.id, t.id);
+                      }}
                       title="Remove from team"
                     >
                       Remove

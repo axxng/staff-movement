@@ -252,7 +252,9 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       <button
                         key={t.id}
                         className="px-1.5 py-0.5 rounded bg-slate-200 hover:bg-red-100"
-                        onClick={() => removeStaffFromTeam(s.id, t.id)}
+                        onClick={() => {
+                          if (confirm(`Remove ${s.name} from ${t.name}?`)) removeStaffFromTeam(s.id, t.id);
+                        }}
                         title="Remove"
                       >
                         {t.name} ×

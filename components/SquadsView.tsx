@@ -194,7 +194,7 @@ function TeamBox({ team }: { team: Tree }) {
               className="hidden group-hover:flex absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] items-center justify-center"
               onClick={(e) => {
                 e.stopPropagation();
-                removeStaffFromTeam(sid, team.id);
+                if (confirm(`Remove from ${team.name}?`)) removeStaffFromTeam(sid, team.id);
               }}
               title="Remove from team"
             >
