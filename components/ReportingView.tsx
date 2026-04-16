@@ -76,7 +76,7 @@ function RootDrop({ children }: { children: React.ReactNode }) {
       }`}
     >
       <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
-        Top of the org (drop here to clear manager)
+        Unassigned (drop here to clear manager)
       </div>
       {children}
     </div>
@@ -109,6 +109,20 @@ export default function ReportingView() {
 
   const { roots } = useMemo(() => buildTree(staff), [staff]);
 
+  // Separate roots into org leaders (have reports) and unassigned (no reports, no manager)
+  const { leaders, unassigned } = useMemo(() => {
+    const leaders: Node[] = [];
+    const unassigned: Node[] = [];
+    for (const r of roots) {
+      if (r.children.length > 0) {
+        leaders.push(r);
+      } else {
+        unassigned.push(r);
+      }
+    }
+    return { leaders, unassigned };
+  }, [roots]);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -139,25 +153,45 @@ export default function ReportingView() {
         <div>
           <h2 className="text-lg font-semibold">Reporting lines</h2>
           <p className="text-sm text-slate-500">
-            Drag a person onto another to make them their manager. Drop on the top zone to clear.
+            Drag a person onto another to make them their manager. Drop on the dashed zone to clear.
           </p>
         </div>
         <ExportButton targetRef={exportRef} filename="reporting-lines" />
       </div>
 
-      <div ref={exportRef} className="export-safe bg-white rounded-xl p-6 overflow-auto">
+      <div ref={exportRef} className="export-safe space-y-4 overflow-auto">
         {isEmpty ? (
           <div className="text-slate-400 text-center py-12">
             No staff yet — add some from the sidebar.
           </div>
         ) : (
           <>
+            {leaders.map((r) => (
+              <div
+                key={r.id}
+                className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 overflow-auto"
+              >
+                <ul className="org-tree flex flex-wrap gap-3 justify-center">
+                  <TreeNode node={r} />
+                </ul>
+              </div>
+            ))}
+
+            {/* Unassigned — no manager, no reports */}
             <RootDrop>
-              <ul className="org-tree flex flex-wrap gap-3 justify-center">
-                {roots.map((r) => (
-                  <TreeNode key={r.id} node={r} />
-                ))}
-              </ul>
+              {unassigned.length === 0 ? (
+                <div className="text-xs text-slate-400 italic">
+                  Everyone has a manager or reports — drop here to unassign.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {unassigned.map((r) => (
+                    <DroppableStaff key={r.id} staffId={r.id}>
+                      <StaffBox staffId={r.id} dragId={`reporting-${r.id}`} />
+                    </DroppableStaff>
+                  ))}
+                </div>
+              )}
             </RootDrop>
           </>
         )}
