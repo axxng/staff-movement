@@ -4,11 +4,18 @@ import { useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
   PointerSensor,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
@@ -41,6 +48,9 @@ function buildForest(teams: Record<TeamId, Team>): Tree[] {
     const key = t.parentId ?? "__root__";
     (childrenOf[key] ??= []).push(t.id);
   }
+  for (const key of Object.keys(childrenOf)) {
+    childrenOf[key].sort((a, b) => (teams[a]?.order ?? 0) - (teams[b]?.order ?? 0));
+  }
   const build = (id: TeamId): Tree => ({
     ...teams[id],
     children: (childrenOf[id] ?? []).map(build),
@@ -64,6 +74,21 @@ function TeamBox({ team }: { team: Tree }) {
   });
   const isOver = setDroppable.isOver;
 
+  const {
+    attributes: sortAttributes,
+    listeners: sortListeners,
+    setNodeRef: setSortRef,
+    transform,
+    transition,
+    isDragging: isSortDragging,
+  } = useSortable({ id: `sort-team-${team.id}`, data: { kind: "team-sort", teamId: team.id } });
+
+  const sortStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isSortDragging ? 0.4 : 1,
+  };
+
   const setRefs = (el: HTMLDivElement | null) => {
     setDroppable.setNodeRef(el);
     (exportRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -75,12 +100,24 @@ function TeamBox({ team }: { team: Tree }) {
 
   return (
     <div
-      ref={setRefs}
+      ref={(el) => {
+        setRefs(el);
+        setSortRef(el);
+      }}
+      style={sortStyle}
       className={`rounded-xl border bg-slate-50 p-3 min-w-[220px] transition-opacity ${
         isOver ? "border-blue-500 bg-blue-50" : "border-slate-200"
       } ${dimmed ? "opacity-40" : ""}`}
     >
       <div className="flex items-center gap-1 mb-2">
+        <button
+          {...sortAttributes}
+          {...sortListeners}
+          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 px-0.5"
+          title="Drag to reorder"
+        >
+          ⠿
+        </button>
         {editing ? (
           <input
             value={draft}
@@ -169,9 +206,14 @@ function TeamBox({ team }: { team: Tree }) {
 
       {team.children.length > 0 && (
         <div className="mt-3 pl-3 border-l-2 border-slate-200 space-y-2">
-          {team.children.map((c) => (
-            <TeamBox key={c.id} team={c} />
-          ))}
+          <SortableContext
+            items={team.children.map((c) => `sort-team-${c.id}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            {team.children.map((c) => (
+              <TeamBox key={c.id} team={c} />
+            ))}
+          </SortableContext>
         </div>
       )}
     </div>
@@ -227,21 +269,69 @@ export default function SquadsView() {
   const addStaffToTeam = useStore((s) => s.addStaffToTeam);
   const removeStaffFromTeam = useStore((s) => s.removeStaffFromTeam);
   const moveStaffBetweenTeams = useStore((s) => s.moveStaffBetweenTeams);
+  const reorderTeams = useStore((s) => s.reorderTeams);
+  const reparentTeam = useStore((s) => s.reparentTeam);
   const exportRef = useRef<HTMLDivElement>(null);
+  const [activeKind, setActiveKind] = useState<"staff" | "team" | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const forest = useMemo(() => buildForest(teams), [teams]);
 
+  const onDragStart = (e: DragStartEvent) => {
+    const data = e.active.data.current as { kind?: string } | undefined;
+    setActiveKind(data?.kind === "team-sort" ? "team" : "staff");
+  };
+
   const onDragEnd = (e: DragEndEvent) => {
+    setActiveKind(null);
     const { active, over } = e;
     if (!over) return;
-    const data = over.data.current as
-      | { kind?: string; teamId?: string }
-      | undefined;
-    const ad = active.data.current as
-      | { staffId?: string; fromTeamId?: string | null }
-      | undefined;
+
+    const activeData = active.data.current as Record<string, unknown> | undefined;
+    const overData = over.data.current as Record<string, unknown> | undefined;
+
+    // Team reorder/reparent
+    if (activeData?.kind === "team-sort") {
+      const draggedTeamId = activeData.teamId as string;
+      const draggedTeam = teams[draggedTeamId];
+      if (!draggedTeam) return;
+
+      if (overData?.kind === "team-sort") {
+        const overTeamId = overData.teamId as string;
+        const overTeam = teams[overTeamId];
+        if (!overTeam) return;
+
+        if (draggedTeam.parentId === overTeam.parentId) {
+          // Same parent — reorder
+          const parentId = draggedTeam.parentId;
+          const siblings = Object.values(teams)
+            .filter((t) => t.parentId === parentId)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((t) => t.id);
+          const oldIdx = siblings.indexOf(draggedTeamId);
+          const newIdx = siblings.indexOf(overTeamId);
+          if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+            siblings.splice(oldIdx, 1);
+            siblings.splice(newIdx, 0, draggedTeamId);
+            reorderTeams(parentId, siblings);
+          }
+        } else {
+          // Different parent — reparent into the over team's parent
+          reparentTeam(draggedTeamId, overTeam.parentId);
+        }
+      } else if (overData?.kind === "team" && overData.teamId) {
+        // Dropped onto a team drop zone — reparent into that team
+        reparentTeam(draggedTeamId, overData.teamId as string);
+      }
+
+      const { clearMultiSelect } = useUI.getState();
+      clearMultiSelect();
+      return;
+    }
+
+    // Staff drag logic (existing code below)
+    const ad = activeData as { staffId?: string; fromTeamId?: string | null } | undefined;
     const draggedId = ad?.staffId;
     if (!draggedId) return;
 
@@ -252,17 +342,17 @@ export default function SquadsView() {
       : [draggedId];
 
     for (const staffId of staffIds) {
-      if (data?.kind === "team" && data.teamId) {
+      if (overData?.kind === "team" && overData.teamId) {
         // Find which team this staff is currently in (for the drop context)
         const fromTeamId = staffId === draggedId
           ? (ad?.fromTeamId ?? null)
           : findFromTeam(staffId);
         if (fromTeamId == null) {
-          addStaffToTeam(staffId, data.teamId);
+          addStaffToTeam(staffId, overData.teamId as string);
         } else {
-          moveStaffBetweenTeams(staffId, fromTeamId, data.teamId);
+          moveStaffBetweenTeams(staffId, fromTeamId, overData.teamId as string);
         }
-      } else if (data?.kind === "unassigned") {
+      } else if (overData?.kind === "unassigned") {
         const fromTeamId = staffId === draggedId
           ? (ad?.fromTeamId ?? null)
           : findFromTeam(staffId);
@@ -281,7 +371,7 @@ export default function SquadsView() {
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-lg font-semibold">Squads</h2>
@@ -310,11 +400,16 @@ export default function SquadsView() {
             No teams yet — click <strong>+ Team</strong> to create one.
           </div>
         ) : (
-          <div className="flex flex-wrap gap-3">
-            {forest.map((t) => (
-              <TeamBox key={t.id} team={t} />
-            ))}
-          </div>
+          <SortableContext
+            items={forest.map((t) => `sort-team-${t.id}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-wrap gap-3">
+              {forest.map((t) => (
+                <TeamBox key={t.id} team={t} />
+              ))}
+            </div>
+          </SortableContext>
         )}
       </div>
     </DndContext>
