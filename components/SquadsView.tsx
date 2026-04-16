@@ -89,7 +89,7 @@ function TeamBox({ team }: { team: Tree }) {
             onDoubleClick={() => setEditing(true)}
             title="Double-click to rename"
           >
-            {team.name}
+            {team.name} ({team.memberIds.length})
           </button>
         )}
         <ExportButton
