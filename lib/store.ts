@@ -60,6 +60,12 @@ type Actions = {
   addRole: (label: string, color: string) => RoleId;
   updateRole: (id: RoleId, patch: Partial<Omit<Role, "id">>) => void;
   deleteRole: (id: RoleId) => void;
+  // tags
+  addTag: (staffId: StaffId, tag: string) => void;
+  removeTag: (staffId: StaffId, tag: string) => void;
+  removeTagFromAll: (tag: string) => void;
+  // team ordering
+  reorderTeams: (parentId: TeamId | null, orderedIds: TeamId[]) => void;
   // history
   clearHistory: () => void;
   // import / export / reset
@@ -210,7 +216,14 @@ export const useStore = create<Store>()(
       addTeam: ({ name, parentId = null }) => {
         const id = uid();
         set((state) => {
-          const team: Team = { id, name, parentId, memberIds: [], order: 0 };
+          const siblings = Object.values(state.teams).filter(
+            (t) => t.parentId === parentId,
+          );
+          const maxOrder = siblings.reduce(
+            (max, t) => Math.max(max, t.order ?? 0),
+            -1,
+          );
+          const team: Team = { id, name, parentId, memberIds: [], order: maxOrder + 1 };
           return {
             teams: { ...state.teams, [id]: team },
             movements: recordMovement(state, {
@@ -413,16 +426,104 @@ export const useStore = create<Store>()(
         });
       },
 
+      addTag: (staffId, tag) => {
+        const normalized = tag.trim().toLowerCase();
+        if (!normalized) return;
+        set((state) => {
+          const cur = state.staff[staffId];
+          if (!cur) return {} as Partial<Store>;
+          if (cur.tags?.includes(normalized)) return {} as Partial<Store>;
+          return {
+            staff: {
+              ...state.staff,
+              [staffId]: { ...cur, tags: [...(cur.tags ?? []), normalized] },
+            },
+            movements: recordMovement(state, {
+              type: "tag_add",
+              staffId,
+              toLabel: normalized,
+              note: `Added tag "${normalized}" to ${cur.name}`,
+            }),
+          };
+        });
+      },
+
+      removeTag: (staffId, tag) => {
+        set((state) => {
+          const cur = state.staff[staffId];
+          if (!cur) return {} as Partial<Store>;
+          if (!cur.tags?.includes(tag)) return {} as Partial<Store>;
+          return {
+            staff: {
+              ...state.staff,
+              [staffId]: { ...cur, tags: cur.tags.filter((t) => t !== tag) },
+            },
+            movements: recordMovement(state, {
+              type: "tag_remove",
+              staffId,
+              fromLabel: tag,
+              note: `Removed tag "${tag}" from ${cur.name}`,
+            }),
+          };
+        });
+      },
+
+      removeTagFromAll: (tag) => {
+        set((state) => {
+          const newStaff = { ...state.staff };
+          let changed = false;
+          for (const [id, s] of Object.entries(newStaff)) {
+            if (s.tags?.includes(tag)) {
+              newStaff[id] = { ...s, tags: s.tags.filter((t) => t !== tag) };
+              changed = true;
+            }
+          }
+          if (!changed) return {} as Partial<Store>;
+          return { staff: newStaff };
+        });
+      },
+
+      reorderTeams: (parentId, orderedIds) => {
+        set((state) => {
+          const newTeams = { ...state.teams };
+          orderedIds.forEach((id, i) => {
+            if (newTeams[id]) {
+              newTeams[id] = { ...newTeams[id], order: i, parentId };
+            }
+          });
+          return { teams: newTeams };
+        });
+      },
+
       clearHistory: () => set({ movements: [] }),
 
-      replaceState: (s) =>
+      replaceState: (s) => {
+        const staff: Record<string, Staff> = {};
+        for (const [id, st] of Object.entries(s.staff ?? {})) {
+          staff[id] = { ...st, tags: st.tags ?? [] };
+        }
+        const teams: Record<string, Team> = {};
+        const byParent: Record<string, typeof teams> = {};
+        for (const [id, t] of Object.entries(s.teams ?? {})) {
+          const key = t.parentId ?? "__root__";
+          (byParent[key] ??= {})[id] = t;
+        }
+        for (const group of Object.values(byParent)) {
+          const sorted = Object.values(group).sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0),
+          );
+          sorted.forEach((t, i) => {
+            teams[t.id] = { ...t, order: t.order ?? i, memberIds: t.memberIds ?? [] };
+          });
+        }
         set({
           version: s.version ?? 1,
-          staff: s.staff ?? {},
-          teams: s.teams ?? {},
+          staff,
+          teams,
           roles: s.roles ?? initialState.roles,
           movements: s.movements ?? [],
-        }),
+        });
+      },
 
       resetAll: () => set({ ...initialState }),
     }),
