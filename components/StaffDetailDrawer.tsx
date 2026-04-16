@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { movementTypeLabel, useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { contrastText, formatDate } from "@/lib/utils";
@@ -26,6 +26,18 @@ export default function StaffDetailDrawer() {
   const deleteStaff = useStore((s) => s.deleteStaff);
   const removeStaffFromTeam = useStore((s) => s.removeStaffFromTeam);
   const addStaffToTeam = useStore((s) => s.addStaffToTeam);
+  const addTag = useStore((s) => s.addTag);
+  const removeTag = useStore((s) => s.removeTag);
+  const allTags = useStore((s) => {
+    const set = new Set<string>();
+    for (const st of Object.values(s.staff)) {
+      for (const t of st.tags ?? []) set.add(t);
+    }
+    return Array.from(set).sort();
+  });
+
+  const [tagInput, setTagInput] = useState("");
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
 
   // Esc to close
   useEffect(() => {
@@ -36,6 +48,11 @@ export default function StaffDetailDrawer() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedStaffId, selectStaff]);
+
+  useEffect(() => {
+    setTagInput("");
+    setShowTagSuggestions(false);
+  }, [selectedStaffId]);
 
   const directReports = useMemo(() => {
     if (!staff) return [];
@@ -239,6 +256,73 @@ export default function StaffDetailDrawer() {
                   </option>
                 ))}
             </select>
+          </section>
+
+          {/* Tags */}
+          <section>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+              Tags
+            </h3>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {(staff.tags ?? []).map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-200 text-xs"
+                >
+                  {tag}
+                  <button
+                    className="text-slate-400 hover:text-red-500"
+                    onClick={() => removeTag(staff.id, tag)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="relative">
+              <input
+                className="w-full text-xs border rounded px-2 py-1"
+                placeholder="Add tag..."
+                value={tagInput}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setShowTagSuggestions(true);
+                }}
+                onFocus={() => setShowTagSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && tagInput.trim()) {
+                    addTag(staff.id, tagInput);
+                    setTagInput("");
+                    setShowTagSuggestions(false);
+                  }
+                }}
+              />
+              {showTagSuggestions && tagInput.trim() && (
+                <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-32 overflow-y-auto">
+                  {allTags
+                    .filter(
+                      (t) =>
+                        t.includes(tagInput.trim().toLowerCase()) &&
+                        !(staff.tags ?? []).includes(t),
+                    )
+                    .map((t) => (
+                      <button
+                        key={t}
+                        className="block w-full text-left text-xs px-2 py-1 hover:bg-slate-100"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          addTag(staff.id, t);
+                          setTagInput("");
+                          setShowTagSuggestions(false);
+                        }}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
           </section>
 
           {/* History */}
