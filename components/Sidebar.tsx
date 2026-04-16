@@ -59,7 +59,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
           onClick={onClose}
         />
       )}
-      <aside className={`w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
+      <aside className={`w-72 sm:w-64 lg:w-60 xl:w-72 shrink-0 border-r border-slate-200 bg-white h-screen overflow-y-auto
         fixed lg:static z-50 transition-transform duration-200
         ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="p-4 border-b flex items-center justify-between">
@@ -75,11 +75,11 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
           </button>
         </div>
 
-      <nav className="flex border-b text-xs">
+      <nav className="flex border-b text-xs overflow-x-auto">
         {sections.map((k) => (
           <button
             key={k}
-            className={`flex-1 px-2 py-2 capitalize ${
+            className={`flex-1 min-w-0 px-1.5 py-2 capitalize whitespace-nowrap ${
               openSection === k
                 ? "border-b-2 border-slate-900 font-semibold"
                 : "text-slate-500"
@@ -159,7 +159,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       title="Double-click to open details"
                     />
                     <select
-                      className="text-[10px] border rounded px-0.5"
+                      className="text-[10px] border rounded px-0.5 max-w-[90px] truncate"
                       value={s.roleId}
                       onChange={(e) => setRole(s.id, e.target.value)}
                     >
