@@ -78,9 +78,9 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
       {!compact && role && (
         <div className="text-[10px] opacity-80 leading-tight">{role.label}</div>
       )}
-      {!compact && tags.length > 0 && (
+      {tags.length > 0 && (
         <div className="flex flex-wrap gap-0.5 mt-0.5">
-          {tags.slice(0, 3).map((tag) => (
+          {tags.slice(0, compact ? 2 : 3).map((tag) => (
             <span
               key={tag}
               className="text-[8px] px-1 rounded bg-black/15"
@@ -88,8 +88,8 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
               {tag}
             </span>
           ))}
-          {tags.length > 3 && (
-            <span className="text-[8px] px-1 opacity-60">+{tags.length - 3}</span>
+          {tags.length > (compact ? 2 : 3) && (
+            <span className="text-[8px] px-1 opacity-60">+{tags.length - (compact ? 2 : 3)}</span>
           )}
         </div>
       )}
