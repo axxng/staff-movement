@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -59,7 +59,26 @@ function buildForest(teams: Record<TeamId, Team>): Tree[] {
   return (childrenOf["__root__"] ?? []).map(build);
 }
 
-function TeamBox({ team }: { team: Tree }) {
+function collectTeamIds(trees: Tree[]): TeamId[] {
+  const ids: TeamId[] = [];
+  for (const t of trees) {
+    ids.push(t.id);
+    ids.push(...collectTeamIds(t.children));
+  }
+  return ids;
+}
+
+function TeamBox({
+  team,
+  expanded,
+  onToggle,
+  expandedTeams,
+}: {
+  team: Tree;
+  expanded: boolean;
+  onToggle: (id: TeamId) => void;
+  expandedTeams: Set<TeamId>;
+}) {
   const removeStaffFromTeam = useStore((s) => s.removeStaffFromTeam);
   const allStaff = useStore((s) => s.staff);
   const allRoles = useStore((s) => s.roles);
@@ -112,6 +131,13 @@ function TeamBox({ team }: { team: Tree }) {
       } ${dimmed ? "opacity-40" : ""}`}
     >
       <div className="flex items-center gap-1 mb-2">
+        <button
+          className="text-slate-400 hover:text-slate-600 px-0.5 text-xs"
+          onClick={() => onToggle(team.id)}
+          title={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? "▼" : "▶"}
+        </button>
         {!readOnly && (
           <button
             {...sortAttributes}
@@ -184,46 +210,78 @@ function TeamBox({ team }: { team: Tree }) {
             ×
           </button>
         )}
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 min-h-[36px]">
-        {team.memberIds.length === 0 && (
-          <div className="text-xs text-slate-400 italic">Drop staff here</div>
+        {!expanded && team.children.length > 0 && (
+          <span className="text-xs text-slate-400 ml-1">+{team.children.length} sub</span>
         )}
-        {sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => (
-          <div key={sid} className="relative group">
-            <StaffBox
-              staffId={sid}
-              dragId={`squad-${team.id}-${sid}`}
-              payload={{ fromTeamId: team.id }}
-              compact
-            />
-            {!readOnly && (
-              <button
-                className="hidden group-hover:flex absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] items-center justify-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`Remove from ${team.name}?`)) removeStaffFromTeam(sid, team.id);
-                }}
-                title="Remove from team"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        ))}
       </div>
 
-      {team.children.length > 0 && (
-        <div className="mt-3 pl-3 border-l-2 border-slate-200 space-y-2">
-          <SortableContext
-            items={team.children.map((c) => `sort-team-${c.id}`)}
-            strategy={verticalListSortingStrategy}
-          >
-            {team.children.map((c) => (
-              <TeamBox key={c.id} team={c} />
+      {expanded ? (
+        <>
+          <div className="flex flex-wrap gap-1.5 min-h-[36px]">
+            {team.memberIds.length === 0 && (
+              <div className="text-xs text-slate-400 italic">Drop staff here</div>
+            )}
+            {sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => (
+              <div key={sid} className="relative group">
+                <StaffBox
+                  staffId={sid}
+                  dragId={`squad-${team.id}-${sid}`}
+                  payload={{ fromTeamId: team.id }}
+                  compact
+                />
+                {!readOnly && (
+                  <button
+                    className="hidden group-hover:flex absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Remove from ${team.name}?`)) removeStaffFromTeam(sid, team.id);
+                    }}
+                    title="Remove from team"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
-          </SortableContext>
+          </div>
+
+          {team.children.length > 0 && (
+            <div className="mt-3 pl-3 border-l-2 border-slate-200 space-y-2">
+              <SortableContext
+                items={team.children.map((c) => `sort-team-${c.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {team.children.map((c) => (
+                  <TeamBox
+                    key={c.id}
+                    team={c}
+                    expanded={expandedTeams.has(c.id)}
+                    onToggle={onToggle}
+                    expandedTeams={expandedTeams}
+                  />
+                ))}
+              </SortableContext>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap gap-1 min-h-[36px]">
+          {team.memberIds.length === 0 ? (
+            <div className="text-xs text-slate-400 italic">Drop staff here</div>
+          ) : (
+            sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => {
+              const s = allStaff[sid];
+              const role = s ? allRoles[s.roleId] : undefined;
+              return (
+                <span
+                  key={sid}
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: role?.color ?? "#94a3b8" }}
+                  title={s?.name}
+                />
+              );
+            })
+          )}
         </div>
       )}
     </div>
@@ -288,6 +346,28 @@ export default function SquadsView() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const forest = useMemo(() => buildForest(teams), [teams]);
+
+  const [expandedTeams, setExpandedTeams] = useState<Set<TeamId>>(new Set());
+
+  const allTeamIds = useMemo(() => collectTeamIds(forest), [forest]);
+  const allExpanded = allTeamIds.length > 0 && allTeamIds.every((id) => expandedTeams.has(id));
+
+  const toggleTeam = useCallback((id: TeamId) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (allExpanded) {
+      setExpandedTeams(new Set());
+    } else {
+      setExpandedTeams(new Set(allTeamIds));
+    }
+  }, [allExpanded, allTeamIds]);
 
   const onDragStart = (e: DragStartEvent) => {
     const data = e.active.data.current as { kind?: string } | undefined;
@@ -391,6 +471,12 @@ export default function SquadsView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            className="px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-100"
+            onClick={toggleAll}
+          >
+            {allExpanded ? "Collapse All" : "Expand All"}
+          </button>
           {!readOnly && (
             <button
               className="px-3 py-1.5 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700"
@@ -417,9 +503,15 @@ export default function SquadsView() {
             items={forest.map((t) => `sort-team-${t.id}`)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {forest.map((t) => (
-                <TeamBox key={t.id} team={t} />
+                <TeamBox
+                  key={t.id}
+                  team={t}
+                  expanded={expandedTeams.has(t.id)}
+                  onToggle={toggleTeam}
+                  expandedTeams={expandedTeams}
+                />
               ))}
             </div>
           </SortableContext>
