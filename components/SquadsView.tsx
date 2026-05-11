@@ -13,6 +13,7 @@ import {
 import {
   SortableContext,
   useSortable,
+  rectSortingStrategy,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -134,6 +135,7 @@ function TeamBox({
         <button
           className="text-slate-400 hover:text-slate-600 px-0.5 text-xs"
           onClick={() => onToggle(team.id)}
+          aria-expanded={expanded}
           title={expanded ? "Collapse" : "Expand"}
         >
           {expanded ? "▼" : "▶"}
@@ -501,7 +503,7 @@ export default function SquadsView() {
         ) : (
           <SortableContext
             items={forest.map((t) => `sort-team-${t.id}`)}
-            strategy={verticalListSortingStrategy}
+            strategy={rectSortingStrategy}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {forest.map((t) => (
