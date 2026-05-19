@@ -301,6 +301,7 @@ export default function SquadsView() {
   const readOnly = useReadOnly();
   const exportRef = useRef<HTMLDivElement>(null);
   const [activeKind, setActiveKind] = useState<"staff" | "team" | null>(null);
+  const [subTab, setSubTab] = useState<"nested" | "tree">("nested");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -426,16 +427,42 @@ export default function SquadsView() {
         <div>
           <h2 className="text-lg font-semibold">Squads</h2>
           <p className="text-sm text-slate-500">
-            Drag staff between squads. Hover a staff card to remove from squad. Staff can belong to multiple squads — drop into another to move, or use sidebar to assign.
+            {subTab === "nested"
+              ? "Drag staff between squads. Hover a staff card to remove from squad. Staff can belong to multiple squads — drop into another to move, or use sidebar to assign."
+              : "Org-chart view of team hierarchy. Drag staff between teams or drag teams to reparent."}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            className="px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-100"
-            onClick={toggleAll}
-          >
-            {allExpanded ? "Collapse All" : "Expand All"}
-          </button>
+        <div className="flex gap-2 items-center">
+          <div className="flex rounded-md border border-slate-300 overflow-hidden text-sm">
+            <button
+              onClick={() => setSubTab("nested")}
+              className={`px-3 py-1.5 ${
+                subTab === "nested"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              Nested
+            </button>
+            <button
+              onClick={() => setSubTab("tree")}
+              className={`px-3 py-1.5 ${
+                subTab === "tree"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              Tree
+            </button>
+          </div>
+          {subTab === "nested" && (
+            <button
+              className="px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-100"
+              onClick={toggleAll}
+            >
+              {allExpanded ? "Collapse All" : "Expand All"}
+            </button>
+          )}
           {!readOnly && (
             <button
               className="px-3 py-1.5 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700"
@@ -452,28 +479,36 @@ export default function SquadsView() {
       </div>
 
       <div ref={exportRef} className="export-safe bg-white rounded-xl p-4 overflow-auto space-y-3">
-        <UnassignedZone />
-        {forest.length === 0 ? (
-          <div className="text-slate-400 text-center py-12">
-            No teams yet — click <strong>+ Team</strong> to create one.
-          </div>
+        {subTab === "nested" ? (
+          <>
+            <UnassignedZone />
+            {forest.length === 0 ? (
+              <div className="text-slate-400 text-center py-12">
+                No teams yet — click <strong>+ Team</strong> to create one.
+              </div>
+            ) : (
+              <SortableContext
+                items={forest.map((t) => `sort-team-${t.id}`)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {forest.map((t) => (
+                    <TeamBox
+                      key={t.id}
+                      team={t}
+                      expanded={expandedTeams.has(t.id)}
+                      onToggle={toggleTeam}
+                      expandedTeams={expandedTeams}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            )}
+          </>
         ) : (
-          <SortableContext
-            items={forest.map((t) => `sort-team-${t.id}`)}
-            strategy={rectSortingStrategy}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {forest.map((t) => (
-                <TeamBox
-                  key={t.id}
-                  team={t}
-                  expanded={expandedTeams.has(t.id)}
-                  onToggle={toggleTeam}
-                  expandedTeams={expandedTeams}
-                />
-              ))}
-            </div>
-          </SortableContext>
+          <div className="text-slate-400 text-center py-12">
+            Tree view coming soon...
+          </div>
         )}
       </div>
     </DndContext>
