@@ -94,6 +94,88 @@ html, body {
   position: relative;
 }
 
+/* Squad org-chart tree connectors */
+.squad-tree, .squad-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.squad-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 28px;
+  gap: 12px;
+}
+
+.squad-tree li {
+  position: relative;
+  padding: 28px 8px 0 8px;
+  text-align: center;
+}
+
+.squad-tree li::before,
+.squad-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 28px;
+  border-top: 2px solid #cbd5e1;
+  width: 50%;
+}
+
+.squad-tree li::before {
+  left: 0;
+  border-right: 2px solid #cbd5e1;
+}
+
+.squad-tree li::after {
+  left: 50%;
+}
+
+.squad-tree > li::before,
+.squad-tree > li::after {
+  display: none;
+}
+
+.squad-tree li:only-child::before,
+.squad-tree li:only-child::after {
+  display: none;
+}
+
+.squad-tree li:only-child {
+  padding-top: 28px;
+}
+
+.squad-tree li:first-child::before,
+.squad-tree li:last-child::after {
+  border: 0 none;
+}
+
+.squad-tree li:last-child::before {
+  border-right: 2px solid #cbd5e1;
+  border-radius: 0 6px 0 0;
+}
+
+.squad-tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.squad-tree li > .squad-node-wrap::before {
+  content: "";
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  height: 28px;
+  border-left: 2px solid #cbd5e1;
+}
+
+.squad-node-wrap {
+  display: inline-block;
+  position: relative;
+}
+
 /* For html-to-image: avoid oklch unsupported colors */
 .export-safe * {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
