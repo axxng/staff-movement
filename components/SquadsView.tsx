@@ -25,6 +25,7 @@ import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
 import type { Team, TeamId } from "@/lib/types";
 import { buildForest, sortMembersByRoleThenName, collectTeamIds, type Tree } from "@/lib/squad-utils";
+import SquadsTreeView from "./SquadsTreeView";
 
 function TeamBox({
   team,
@@ -422,7 +423,7 @@ export default function SquadsView() {
   };
 
   return (
-    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <>
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-lg font-semibold">Squads</h2>
@@ -480,7 +481,7 @@ export default function SquadsView() {
 
       <div ref={exportRef} className="export-safe bg-white rounded-xl p-4 overflow-auto space-y-3">
         {subTab === "nested" ? (
-          <>
+          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <UnassignedZone />
             {forest.length === 0 ? (
               <div className="text-slate-400 text-center py-12">
@@ -504,13 +505,11 @@ export default function SquadsView() {
                 </div>
               </SortableContext>
             )}
-          </>
+          </DndContext>
         ) : (
-          <div className="text-slate-400 text-center py-12">
-            Tree view coming soon...
-          </div>
+          <SquadsTreeView />
         )}
       </div>
-    </DndContext>
+    </>
   );
 }
