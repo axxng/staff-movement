@@ -424,8 +424,8 @@ export default function SquadsView() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-3">
-        <div>
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold">Squads</h2>
           <p className="text-sm text-slate-500">
             {subTab === "nested"
@@ -433,8 +433,8 @@ export default function SquadsView() {
               : "Org-chart view of team hierarchy. Drag staff between teams or drag teams to reparent."}
           </p>
         </div>
-        <div className="flex gap-2 items-center">
-          <div className="flex rounded-md border border-slate-300 overflow-hidden text-sm">
+        <div className="flex gap-2 items-center shrink-0">
+          <div className="flex shrink-0 rounded-md border border-slate-300 overflow-hidden text-sm">
             <button
               onClick={() => setSubTab("nested")}
               className={`px-3 py-1.5 ${
