@@ -35,6 +35,20 @@ export function buildForest(teams: Record<TeamId, Team>): Tree[] {
   return (childrenOf["__root__"] ?? []).map(build);
 }
 
+/**
+ * Count unique members across a team and all of its descendant sub-teams.
+ * Staff on multiple squads within the subtree are counted once.
+ */
+export function countSubtreeMembers(tree: Tree): number {
+  const seen = new Set<string>();
+  const walk = (t: Tree) => {
+    for (const m of t.memberIds) seen.add(m);
+    for (const c of t.children) walk(c);
+  };
+  walk(tree);
+  return seen.size;
+}
+
 export function collectTeamIds(trees: Tree[]): TeamId[] {
   const ids: TeamId[] = [];
   for (const t of trees) {

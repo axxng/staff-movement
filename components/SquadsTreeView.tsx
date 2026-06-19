@@ -14,7 +14,7 @@ import { useUI } from "@/lib/ui";
 import { useReadOnly } from "@/lib/readonly";
 import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
-import { buildForest, sortMembersByRoleThenName, type Tree } from "@/lib/squad-utils";
+import { buildForest, sortMembersByRoleThenName, countSubtreeMembers, type Tree } from "@/lib/squad-utils";
 import type { TeamId } from "@/lib/types";
 
 function DroppableTeamNode({
@@ -151,7 +151,8 @@ function TeamTreeNode({
                   onDoubleClick={readOnly ? undefined : () => setEditing(true)}
                   title={readOnly ? undefined : "Double-click to rename"}
                 >
-                  {team.name} ({team.memberIds.length})
+                  {team.name} ({team.memberIds.length}
+                  {team.children.length > 0 && ` · ${countSubtreeMembers(team)} total`})
                 </span>
               )}
               {!readOnly && (

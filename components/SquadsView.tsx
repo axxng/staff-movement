@@ -24,7 +24,7 @@ import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
 import type { Team, TeamId } from "@/lib/types";
-import { buildForest, sortMembersByRoleThenName, collectTeamIds, type Tree } from "@/lib/squad-utils";
+import { buildForest, sortMembersByRoleThenName, collectTeamIds, countSubtreeMembers, type Tree } from "@/lib/squad-utils";
 import SquadsTreeView from "./SquadsTreeView";
 
 function TeamBox({
@@ -135,7 +135,8 @@ function TeamBox({
             onDoubleClick={readOnly ? undefined : () => setEditing(true)}
             title={readOnly ? undefined : "Double-click to rename"}
           >
-            {team.name} ({team.memberIds.length})
+            {team.name} ({team.memberIds.length}
+            {team.children.length > 0 && ` · ${countSubtreeMembers(team)} total`})
           </span>
         )}
         <ExportButton
