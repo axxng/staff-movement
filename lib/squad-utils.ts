@@ -37,12 +37,13 @@ export function buildForest(teams: Record<TeamId, Team>): Tree[] {
 
 /**
  * Count unique members across a team and all of its descendant sub-teams.
- * Staff on multiple squads within the subtree are counted once.
+ * Staff on multiple squads within the subtree are counted once. An optional
+ * `include` predicate (e.g. a role filter) restricts which members are counted.
  */
-export function countSubtreeMembers(tree: Tree): number {
+export function countSubtreeMembers(tree: Tree, include?: (staffId: string) => boolean): number {
   const seen = new Set<string>();
   const walk = (t: Tree) => {
-    for (const m of t.memberIds) seen.add(m);
+    for (const m of t.memberIds) if (!include || include(m)) seen.add(m);
     for (const c of t.children) walk(c);
   };
   walk(tree);

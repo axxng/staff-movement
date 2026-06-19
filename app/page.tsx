@@ -14,6 +14,7 @@ import { fetchConfig, useSync, type SyncConfig } from "@/lib/sync";
 import { SearchProvider, useSearch } from "@/lib/search";
 import { useUI } from "@/lib/ui";
 import { ReadOnlyProvider } from "@/lib/readonly";
+import { contrastText } from "@/lib/utils";
 import type { SessionUser } from "@/lib/types";
 
 type Tab = "reporting" | "squads" | "history";
@@ -27,6 +28,47 @@ function HeaderSearch() {
       value={query}
       onChange={(e) => setQuery(e.target.value)}
     />
+  );
+}
+
+function RoleFilter() {
+  const roles = useStore((s) => s.roles);
+  const { activeRoles, toggleRole, clearRoles, roleFilterActive } = useSearch();
+  const list = Object.values(roles);
+  if (list.length === 0) return null;
+  return (
+    <div className="flex items-center gap-1 flex-wrap" title="Filter by role">
+      {list.map((r) => {
+        const active = activeRoles.has(r.id);
+        return (
+          <button
+            key={r.id}
+            onClick={() => toggleRole(r.id)}
+            className={`text-[11px] px-2 py-1 rounded-full border transition ${
+              active ? "" : "opacity-50 hover:opacity-90"
+            }`}
+            style={
+              active
+                ? { backgroundColor: r.color, color: contrastText(r.color), borderColor: r.color }
+                : { borderColor: r.color, color: r.color }
+            }
+            aria-pressed={active}
+            title={active ? `Showing ${r.label}` : `Filter to ${r.label}`}
+          >
+            {r.label}
+          </button>
+        );
+      })}
+      {roleFilterActive && (
+        <button
+          onClick={clearRoles}
+          className="text-[11px] px-1.5 py-1 text-slate-500 hover:text-slate-800"
+          title="Clear role filter"
+        >
+          clear
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -108,6 +150,8 @@ function PageInner({ user }: { user: SessionUser }) {
     useStore.temporal.getState().clear();
   }, []);
 
+  const { roleFilterActive, visibleStaff } = useSearch();
+
   const sync = useSync({ enabled: hydrated, config });
 
   // If sync gets a 401 and user is not a guest, redirect to login
@@ -185,10 +229,13 @@ function PageInner({ user }: { user: SessionUser }) {
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <SelectionBadge />
             <HeaderSearch />
+            <RoleFilter />
             {!isGuest && <UndoRedoButtons />}
             <div className="text-xs text-slate-500 hidden sm:block">
               {hydrated
-                ? `${totals.staff} staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
+                ? `${
+                    roleFilterActive ? `${visibleStaff.size} of ${totals.staff}` : totals.staff
+                  } staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
                 : "\u2026"}
             </div>
             {!isGuest && (

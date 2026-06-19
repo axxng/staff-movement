@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
+import { useSearch } from "@/lib/search";
 import StaffBox from "./StaffBox";
 import ExportButton from "./ExportButton";
 import type { Staff, Role, StaffId } from "@/lib/types";
@@ -92,18 +93,25 @@ function RootDrop({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TreeNode({ node }: { node: Node }) {
+/** A node is shown when it matches the role filter or has a descendant that does. */
+function subtreeMatches(node: Node, visible: Set<string>): boolean {
+  return visible.has(node.id) || node.children.some((c) => subtreeMatches(c, visible));
+}
+
+function TreeNode({ node, visibleStaff }: { node: Node; visibleStaff: Set<string> }) {
+  const matches = visibleStaff.has(node.id);
+  const visibleChildren = node.children.filter((c) => subtreeMatches(c, visibleStaff));
   return (
     <li>
       <div className="node-wrap">
         <DroppableStaff staffId={node.id}>
-          <StaffBox staffId={node.id} dragId={`reporting-${node.id}`} />
+          <StaffBox staffId={node.id} dragId={`reporting-${node.id}`} dimmed={!matches} />
         </DroppableStaff>
       </div>
-      {node.children.length > 0 && (
+      {visibleChildren.length > 0 && (
         <ul>
-          {node.children.map((c) => (
-            <TreeNode key={c.id} node={c} />
+          {visibleChildren.map((c) => (
+            <TreeNode key={c.id} node={c} visibleStaff={visibleStaff} />
           ))}
         </ul>
       )}
@@ -115,15 +123,18 @@ export default function ReportingView() {
   const staff = useStore((s) => s.staff);
   const roles = useStore((s) => s.roles);
   const setManager = useStore((s) => s.setManager);
+  const { roleFilterActive, visibleStaff } = useSearch();
   const exportRef = useRef<HTMLDivElement>(null);
 
   const { roots } = useMemo(() => buildTree(staff, roles), [staff, roles]);
 
-  // Separate roots into org leaders (have reports) and unassigned (no reports, no manager)
+  // Separate roots into org leaders (have reports) and unassigned (no reports, no
+  // manager), keeping only subtrees that contain a role-filter match.
   const { leaders, unassigned } = useMemo(() => {
     const leaders: Node[] = [];
     const unassigned: Node[] = [];
     for (const r of roots) {
+      if (roleFilterActive && !subtreeMatches(r, visibleStaff)) continue;
       if (r.children.length > 0) {
         leaders.push(r);
       } else {
@@ -131,7 +142,7 @@ export default function ReportingView() {
       }
     }
     return { leaders, unassigned };
-  }, [roots]);
+  }, [roots, roleFilterActive, visibleStaff]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -183,7 +194,7 @@ export default function ReportingView() {
               >
                 <div className="min-w-fit w-full flex justify-center">
                   <ul className="org-tree inline-flex gap-3">
-                    <TreeNode node={r} />
+                    <TreeNode node={r} visibleStaff={visibleStaff} />
                   </ul>
                 </div>
               </div>

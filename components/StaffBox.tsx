@@ -13,9 +13,10 @@ type Props = {
   payload?: Record<string, unknown>;
   compact?: boolean;
   onClick?: () => void;
+  dimmed?: boolean; // force dimmed (e.g. role-filter connector ancestor)
 };
 
-export default function StaffBox({ staffId, dragId, payload, compact, onClick }: Props) {
+export default function StaffBox({ staffId, dragId, payload, compact, onClick, dimmed: dimmedProp }: Props) {
   const staff = useStore((s) => s.staff[staffId]);
   const role = useStore((s) => (staff ? s.roles[staff.roleId] : undefined));
   const tags = useStore((s) => s.staff[staffId]?.tags ?? []);
@@ -36,7 +37,7 @@ export default function StaffBox({ staffId, dragId, payload, compact, onClick }:
 
   const bg = role?.color ?? "#64748b";
   const fg = contrastText(bg);
-  const dimmed = hasQuery && !matchedStaff.has(staffId);
+  const dimmed = (hasQuery && !matchedStaff.has(staffId)) || !!dimmedProp;
   const highlighted = hasQuery && matchedStaff.has(staffId);
 
   const handleClick = (e: React.MouseEvent) => {

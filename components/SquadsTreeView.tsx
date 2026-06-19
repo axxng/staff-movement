@@ -47,13 +47,16 @@ function UnassignedZone() {
   });
   const staff = useStore((s) => s.staff);
   const teams = useStore((s) => s.teams);
+  const { roleFilterActive, visibleStaff } = useSearch();
 
   const inAnyTeam = useMemo(() => {
     const set = new Set<string>();
     for (const t of Object.values(teams)) for (const m of t.memberIds) set.add(m);
     return set;
   }, [teams]);
-  const unassigned = Object.values(staff).filter((s) => !inAnyTeam.has(s.id));
+  const unassigned = Object.values(staff).filter(
+    (s) => !inAnyTeam.has(s.id) && (!roleFilterActive || visibleStaff.has(s.id)),
+  );
 
   return (
     <div
@@ -95,7 +98,7 @@ function TeamTreeNode({
   const allStaff = useStore((s) => s.staff);
   const allRoles = useStore((s) => s.roles);
   const readOnly = useReadOnly();
-  const { hasQuery, matchedTeams } = useSearch();
+  const { hasQuery, matchedTeams, roleFilterActive, visibleStaff } = useSearch();
   const renameTeam = useStore((s) => s.renameTeam);
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
@@ -105,7 +108,9 @@ function TeamTreeNode({
 
   const collapsed = collapsedTeams.has(team.id);
   const dimmed = hasQuery && !matchedTeams.has(team.id);
-  const sortedMembers = sortMembersByRoleThenName(team.memberIds, allStaff, allRoles);
+  const filterFn = roleFilterActive ? (id: string) => visibleStaff.has(id) : undefined;
+  const visibleMemberIds = filterFn ? team.memberIds.filter(filterFn) : team.memberIds;
+  const sortedMembers = sortMembersByRoleThenName(visibleMemberIds, allStaff, allRoles);
 
   return (
     <li>
@@ -151,8 +156,8 @@ function TeamTreeNode({
                   onDoubleClick={readOnly ? undefined : () => setEditing(true)}
                   title={readOnly ? undefined : "Double-click to rename"}
                 >
-                  {team.name} ({team.memberIds.length}
-                  {team.children.length > 0 && ` · ${countSubtreeMembers(team)} total`})
+                  {team.name} ({visibleMemberIds.length}
+                  {team.children.length > 0 && ` · ${countSubtreeMembers(team, filterFn)} total`})
                 </span>
               )}
               {!readOnly && (
@@ -187,8 +192,10 @@ function TeamTreeNode({
 
             {/* Members */}
             <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-              {team.memberIds.length === 0 && (
-                <div className="text-xs text-slate-400 italic">Drop staff here</div>
+              {sortedMembers.length === 0 && (
+                <div className="text-xs text-slate-400 italic">
+                  {roleFilterActive && team.memberIds.length > 0 ? "No matching staff" : "Drop staff here"}
+                </div>
               )}
               {sortedMembers.map((sid) => (
                 <div key={sid} className="relative group">

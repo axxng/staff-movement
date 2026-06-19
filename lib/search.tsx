@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { useStore } from "./store";
 
 type SearchContextValue = {
@@ -9,15 +9,42 @@ type SearchContextValue = {
   matchedStaff: Set<string>;
   matchedTeams: Set<string>;
   hasQuery: boolean;
+  // Role filter
+  activeRoles: Set<string>;
+  toggleRole: (roleId: string) => void;
+  clearRoles: () => void;
+  roleFilterActive: boolean;
+  /** Staff ids passing the active role filter (every staff id when no filter is active). */
+  visibleStaff: Set<string>;
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
 
 export function SearchProvider({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
+  const [activeRoles, setActiveRoles] = useState<Set<string>>(new Set());
   const staff = useStore((s) => s.staff);
   const teams = useStore((s) => s.teams);
   const roles = useStore((s) => s.roles);
+
+  const toggleRole = useCallback((roleId: string) => {
+    setActiveRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleId)) next.delete(roleId);
+      else next.add(roleId);
+      return next;
+    });
+  }, []);
+  const clearRoles = useCallback(() => setActiveRoles(new Set()), []);
+
+  const roleFilterActive = activeRoles.size > 0;
+  const visibleStaff = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of Object.values(staff)) {
+      if (!roleFilterActive || activeRoles.has(s.roleId)) set.add(s.id);
+    }
+    return set;
+  }, [staff, activeRoles, roleFilterActive]);
 
   const { matchedStaff, matchedTeams } = useMemo(() => {
     const ms = new Set<string>();
@@ -50,6 +77,11 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     matchedStaff,
     matchedTeams,
     hasQuery: query.trim().length > 0,
+    activeRoles,
+    toggleRole,
+    clearRoles,
+    roleFilterActive,
+    visibleStaff,
   };
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
@@ -64,6 +96,11 @@ export function useSearch(): SearchContextValue {
       matchedStaff: new Set(),
       matchedTeams: new Set(),
       hasQuery: false,
+      activeRoles: new Set(),
+      toggleRole: () => {},
+      clearRoles: () => {},
+      roleFilterActive: false,
+      visibleStaff: new Set(),
     };
   }
   return ctx;

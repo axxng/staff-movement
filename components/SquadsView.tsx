@@ -44,9 +44,12 @@ function TeamBox({
   const renameTeam = useStore((s) => s.renameTeam);
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
-  const { hasQuery, matchedTeams } = useSearch();
+  const { hasQuery, matchedTeams, roleFilterActive, visibleStaff } = useSearch();
   const readOnly = useReadOnly();
   const exportRef = useRef<HTMLDivElement>(null);
+
+  const filterFn = roleFilterActive ? (id: string) => visibleStaff.has(id) : undefined;
+  const visibleMemberIds = filterFn ? team.memberIds.filter(filterFn) : team.memberIds;
 
   const setDroppable = useDroppable({
     id: `team-drop-${team.id}`,
@@ -135,8 +138,8 @@ function TeamBox({
             onDoubleClick={readOnly ? undefined : () => setEditing(true)}
             title={readOnly ? undefined : "Double-click to rename"}
           >
-            {team.name} ({team.memberIds.length}
-            {team.children.length > 0 && ` · ${countSubtreeMembers(team)} total`})
+            {team.name} ({visibleMemberIds.length}
+            {team.children.length > 0 && ` · ${countSubtreeMembers(team, filterFn)} total`})
           </span>
         )}
         <ExportButton
@@ -179,10 +182,12 @@ function TeamBox({
       {expanded ? (
         <>
           <div className="flex flex-wrap gap-1.5 min-h-[36px]">
-            {team.memberIds.length === 0 && (
-              <div className="text-xs text-slate-400 italic">Drop staff here</div>
+            {visibleMemberIds.length === 0 && (
+              <div className="text-xs text-slate-400 italic">
+                {roleFilterActive && team.memberIds.length > 0 ? "No matching staff" : "Drop staff here"}
+              </div>
             )}
-            {sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => (
+            {sortMembersByRoleThenName(visibleMemberIds, allStaff, allRoles).map((sid) => (
               <div key={sid} className="relative group">
                 <StaffBox
                   staffId={sid}
@@ -227,10 +232,12 @@ function TeamBox({
         </>
       ) : (
         <div className="flex flex-wrap gap-1 min-h-[36px]">
-          {team.memberIds.length === 0 ? (
-            <div className="text-xs text-slate-400 italic">Drop staff here</div>
+          {visibleMemberIds.length === 0 ? (
+            <div className="text-xs text-slate-400 italic">
+              {roleFilterActive && team.memberIds.length > 0 ? "No matching staff" : "Drop staff here"}
+            </div>
           ) : (
-            sortMembersByRoleThenName(team.memberIds, allStaff, allRoles).map((sid) => {
+            sortMembersByRoleThenName(visibleMemberIds, allStaff, allRoles).map((sid) => {
               const s = allStaff[sid];
               const role = s ? allRoles[s.roleId] : undefined;
               return (
@@ -256,13 +263,16 @@ function UnassignedZone() {
   });
   const staff = useStore((s) => s.staff);
   const teams = useStore((s) => s.teams);
+  const { roleFilterActive, visibleStaff } = useSearch();
 
   const inAnyTeam = useMemo(() => {
     const set = new Set<string>();
     for (const t of Object.values(teams)) for (const m of t.memberIds) set.add(m);
     return set;
   }, [teams]);
-  const unassigned = Object.values(staff).filter((s) => !inAnyTeam.has(s.id));
+  const unassigned = Object.values(staff).filter(
+    (s) => !inAnyTeam.has(s.id) && (!roleFilterActive || visibleStaff.has(s.id)),
+  );
 
   return (
     <div
