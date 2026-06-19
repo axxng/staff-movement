@@ -492,7 +492,7 @@ export default function SquadsView() {
                 items={forest.map((t) => `sort-team-${t.id}`)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {forest.map((t) => (
                     <TeamBox
                       key={t.id}
