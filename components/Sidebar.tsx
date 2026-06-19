@@ -27,12 +27,24 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
   const removeTagFromAll = useStore((s) => s.removeTagFromAll);
 
   const selectStaff = useUI((s) => s.selectStaff);
-  const { setQuery } = useSearch();
+  const { setQuery, hasQuery, matchedStaff, roleFilterActive, visibleStaff } = useSearch();
 
   const [name, setName] = useState("");
   const [newTag, setNewTag] = useState("");
   const roleList = Object.values(roles);
   const [roleId, setRoleId] = useState<string>(roleList[0]?.id ?? "");
+
+  const visibleStaffList = useMemo(
+    () =>
+      Object.values(staff)
+        .filter(
+          (s) =>
+            (!roleFilterActive || visibleStaff.has(s.id)) &&
+            (!hasQuery || matchedStaff.has(s.id)),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [staff, roleFilterActive, visibleStaff, hasQuery, matchedStaff],
+  );
 
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -133,11 +145,14 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
           </div>
 
           <div className="border-t pt-2 space-y-1 max-h-[60vh] overflow-y-auto">
-            {Object.values(staff).length === 0 && (
-              <div className="text-xs text-slate-400">No staff yet.</div>
+            {visibleStaffList.length === 0 && (
+              <div className="text-xs text-slate-400">
+                {Object.values(staff).length === 0
+                  ? "No staff yet."
+                  : "No staff match the current search/filter."}
+              </div>
             )}
-            {Object.values(staff)
-              .sort((a, b) => a.name.localeCompare(b.name))
+            {visibleStaffList
               .map((s) => {
                 const r = roles[s.roleId];
                 return (
@@ -237,9 +252,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
           <p className="text-slate-500">
             Quick way to assign staff to multiple teams without dragging.
           </p>
-          {Object.values(staff)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((s) => {
+          {visibleStaffList.map((s) => {
               const memberOf = Object.values(teams).filter((t) => t.memberIds.includes(s.id));
               return (
                 <div key={s.id} className="border rounded p-2">
@@ -282,8 +295,12 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                 </div>
               );
             })}
-          {Object.values(staff).length === 0 && (
-            <div className="text-slate-400">Add staff first.</div>
+          {visibleStaffList.length === 0 && (
+            <div className="text-slate-400">
+              {Object.values(staff).length === 0
+                ? "Add staff first."
+                : "No staff match the current search/filter."}
+            </div>
           )}
         </div>
       )}
