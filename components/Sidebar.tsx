@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { useSearch } from "@/lib/search";
+import { useReadOnly } from "@/lib/readonly";
 import { contrastText } from "@/lib/utils";
 import UserManagement from "@/components/UserManagement";
 import type { SessionUser } from "@/lib/types";
@@ -28,6 +29,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
 
   const selectStaff = useUI((s) => s.selectStaff);
   const { setQuery, hasQuery, matchedStaff, roleFilterActive, visibleStaff } = useSearch();
+  const readOnly = useReadOnly();
 
   const [name, setName] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -105,46 +107,48 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
 
       {openSection === "staff" && (
         <div className="p-4 space-y-3">
-          <div className="space-y-2">
-            <input
-              className="w-full text-sm border rounded px-2 py-1"
-              placeholder="Add staff name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && name.trim()) {
-                  addStaff({ name: name.trim(), roleId });
-                  setName("");
-                }
-              }}
-            />
-            <div className="flex gap-2">
-              <select
-                className="text-sm border rounded px-2 py-1 flex-1 min-w-0"
-                value={roleId}
-                onChange={(e) => setRoleId(e.target.value)}
-              >
-                {roleList.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="text-sm bg-slate-900 text-white rounded px-3 py-1 shrink-0"
-                onClick={() => {
-                  if (name.trim()) {
+          {!readOnly && (
+            <div className="space-y-2">
+              <input
+                className="w-full text-sm border rounded px-2 py-1"
+                placeholder="Add staff name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && name.trim()) {
                     addStaff({ name: name.trim(), roleId });
                     setName("");
                   }
                 }}
-              >
-                Add
-              </button>
+              />
+              <div className="flex gap-2">
+                <select
+                  className="text-sm border rounded px-2 py-1 flex-1 min-w-0"
+                  value={roleId}
+                  onChange={(e) => setRoleId(e.target.value)}
+                >
+                  {roleList.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="text-sm bg-slate-900 text-white rounded px-3 py-1 shrink-0"
+                  onClick={() => {
+                    if (name.trim()) {
+                      addStaff({ name: name.trim(), roleId });
+                      setName("");
+                    }
+                  }}
+                >
+                  Add
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="border-t pt-2 space-y-1 max-h-[60vh] overflow-y-auto">
+          <div className={`${readOnly ? "" : "border-t"} pt-2 space-y-1 max-h-[60vh] overflow-y-auto`}>
             {visibleStaffList.length === 0 && (
               <div className="text-xs text-slate-400">
                 {Object.values(staff).length === 0
@@ -163,35 +167,50 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       onClick={() => selectStaff(s.id)}
                       title="Open details"
                     />
-                    <input
-                      className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
-                      defaultValue={s.name}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== s.name) renameStaff(s.id, v);
-                      }}
-                      onDoubleClick={() => selectStaff(s.id)}
-                      title="Double-click to open details"
-                    />
-                    <select
-                      className="text-[10px] border rounded px-0.5 min-w-0"
-                      value={s.roleId}
-                      onChange={(e) => setRole(s.id, e.target.value)}
-                    >
-                      {roleList.map((rr) => (
-                        <option key={rr.id} value={rr.id}>
-                          {rr.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="text-red-500 hover:bg-red-50 px-1 rounded shrink-0"
-                      onClick={() => {
-                        if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
-                      }}
-                    >
-                      ×
-                    </button>
+                    {readOnly ? (
+                      <>
+                        <button
+                          className="flex-1 text-left px-1 py-0.5 rounded hover:bg-slate-100 truncate min-w-0"
+                          onClick={() => selectStaff(s.id)}
+                          title="Open details"
+                        >
+                          {s.name}
+                        </button>
+                        <span className="text-[10px] text-slate-500 shrink-0">{r?.label}</span>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
+                          defaultValue={s.name}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v && v !== s.name) renameStaff(s.id, v);
+                          }}
+                          onDoubleClick={() => selectStaff(s.id)}
+                          title="Double-click to open details"
+                        />
+                        <select
+                          className="text-[10px] border rounded px-0.5 min-w-0"
+                          value={s.roleId}
+                          onChange={(e) => setRole(s.id, e.target.value)}
+                        >
+                          {roleList.map((rr) => (
+                            <option key={rr.id} value={rr.id}>
+                              {rr.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="text-red-500 hover:bg-red-50 px-1 rounded shrink-0"
+                          onClick={() => {
+                            if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -201,56 +220,70 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
 
       {openSection === "roles" && (
         <div className="p-4 space-y-2">
-          {roleList.map((r) => (
-            <div key={r.id} className="flex items-center gap-1">
-              <input
-                type="color"
-                value={r.color}
-                onChange={(e) => updateRole(r.id, { color: e.target.value })}
-                className="w-6 h-6 border rounded"
-              />
-              <input
-                className="flex-1 text-xs border rounded px-1 py-0.5"
-                defaultValue={r.label}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== r.label) updateRole(r.id, { label: v });
-                }}
-              />
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ backgroundColor: r.color, color: contrastText(r.color) }}
-              >
-                aA
-              </span>
-              <button
-                className="text-red-500 hover:bg-red-50 px-1 rounded text-xs"
-                onClick={() => {
-                  if (confirm(`Delete role "${r.label}"? Staff using it will be reassigned.`)) {
-                    deleteRole(r.id);
-                  }
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            className="text-xs px-2 py-1 mt-2 rounded border border-dashed border-slate-300 w-full hover:bg-slate-50"
-            onClick={() => {
-              const label = prompt("Role name?");
-              if (label?.trim()) addRole(label.trim(), "#64748b");
-            }}
-          >
-            + Add role
-          </button>
+          {readOnly
+            ? roleList.map((r) => (
+                <div key={r.id} className="flex items-center gap-2 text-xs">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: r.color }}
+                  />
+                  <span className="flex-1 truncate">{r.label}</span>
+                </div>
+              ))
+            : roleList.map((r) => (
+                <div key={r.id} className="flex items-center gap-1">
+                  <input
+                    type="color"
+                    value={r.color}
+                    onChange={(e) => updateRole(r.id, { color: e.target.value })}
+                    className="w-6 h-6 border rounded"
+                  />
+                  <input
+                    className="flex-1 text-xs border rounded px-1 py-0.5"
+                    defaultValue={r.label}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== r.label) updateRole(r.id, { label: v });
+                    }}
+                  />
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded"
+                    style={{ backgroundColor: r.color, color: contrastText(r.color) }}
+                  >
+                    aA
+                  </span>
+                  <button
+                    className="text-red-500 hover:bg-red-50 px-1 rounded text-xs"
+                    onClick={() => {
+                      if (confirm(`Delete role "${r.label}"? Staff using it will be reassigned.`)) {
+                        deleteRole(r.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+          {!readOnly && (
+            <button
+              className="text-xs px-2 py-1 mt-2 rounded border border-dashed border-slate-300 w-full hover:bg-slate-50"
+              onClick={() => {
+                const label = prompt("Role name?");
+                if (label?.trim()) addRole(label.trim(), "#64748b");
+              }}
+            >
+              + Add role
+            </button>
+          )}
         </div>
       )}
 
       {openSection === "membership" && (
         <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-500">
-            Quick way to assign staff to multiple teams without dragging.
+            {readOnly
+              ? "Team membership for each person."
+              : "Quick way to assign staff to multiple teams without dragging."}
           </p>
           {visibleStaffList.map((s) => {
               const memberOf = Object.values(teams).filter((t) => t.memberIds.includes(s.id));
@@ -261,37 +294,45 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                     {memberOf.length === 0 && (
                       <span className="text-slate-400 italic">No teams</span>
                     )}
-                    {memberOf.map((t) => (
-                      <button
-                        key={t.id}
-                        className="px-1.5 py-0.5 rounded bg-slate-200 hover:bg-red-100"
-                        onClick={() => {
-                          if (confirm(`Remove ${s.name} from ${t.name}?`)) removeStaffFromTeam(s.id, t.id);
-                        }}
-                        title="Remove"
-                      >
-                        {t.name} ×
-                      </button>
-                    ))}
-                  </div>
-                  <select
-                    className="w-full text-[11px] border rounded px-1 py-0.5"
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addStaffToTeam(s.id, e.target.value);
-                      }
-                    }}
-                  >
-                    <option value="">+ Add to team…</option>
-                    {Object.values(teams)
-                      .filter((t) => !t.memberIds.includes(s.id))
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>
+                    {memberOf.map((t) =>
+                      readOnly ? (
+                        <span key={t.id} className="px-1.5 py-0.5 rounded bg-slate-200">
                           {t.name}
-                        </option>
-                      ))}
-                  </select>
+                        </span>
+                      ) : (
+                        <button
+                          key={t.id}
+                          className="px-1.5 py-0.5 rounded bg-slate-200 hover:bg-red-100"
+                          onClick={() => {
+                            if (confirm(`Remove ${s.name} from ${t.name}?`)) removeStaffFromTeam(s.id, t.id);
+                          }}
+                          title="Remove"
+                        >
+                          {t.name} ×
+                        </button>
+                      ),
+                    )}
+                  </div>
+                  {!readOnly && (
+                    <select
+                      className="w-full text-[11px] border rounded px-1 py-0.5"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          addStaffToTeam(s.id, e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="">+ Add to team…</option>
+                      {Object.values(teams)
+                        .filter((t) => !t.memberIds.includes(s.id))
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
               );
             })}
@@ -325,15 +366,17 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                   <span className="font-medium">{tag}</span>
                   <span className="text-slate-400 ml-1">({count})</span>
                 </button>
-                <button
-                  className="text-red-500 hover:bg-red-50 px-1 rounded"
-                  onClick={() => {
-                    if (confirm(`Remove tag "${tag}" from all ${count} staff?`))
-                      removeTagFromAll(tag);
-                  }}
-                >
-                  ×
-                </button>
+                {!readOnly && (
+                  <button
+                    className="text-red-500 hover:bg-red-50 px-1 rounded"
+                    onClick={() => {
+                      if (confirm(`Remove tag "${tag}" from all ${count} staff?`))
+                        removeTagFromAll(tag);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
           </div>

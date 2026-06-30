@@ -197,21 +197,19 @@ function PageInner({ user }: { user: SessionUser }) {
 
   return (
     <div className="flex min-h-screen">
-      {!isGuest && <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
+      <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="border-b bg-white px-4 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            {!isGuest && (
-              <button
-                className="xl:hidden text-slate-600 hover:text-slate-900 p-1"
-                onClick={() => setSidebarOpen(true)}
-                title="Open sidebar"
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
+            <button
+              className="xl:hidden text-slate-600 hover:text-slate-900 p-1"
+              onClick={() => setSidebarOpen(true)}
+              title="Open sidebar"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            </button>
             {(["squads", "reporting", "history"] as const).map((t) => (
               <button
                 key={t}
