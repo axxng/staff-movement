@@ -44,6 +44,7 @@ function TeamBox({
   const renameTeam = useStore((s) => s.renameTeam);
   const deleteTeam = useStore((s) => s.deleteTeam);
   const addTeam = useStore((s) => s.addTeam);
+  const setTeamSideBySide = useStore((s) => s.setTeamSideBySide);
   const { hasQuery, matchedTeams, roleFilterActive, visibleStaff } = useSearch();
   const readOnly = useReadOnly();
   const exportRef = useRef<HTMLDivElement>(null);
@@ -151,6 +152,24 @@ function TeamBox({
         />
         {!readOnly && (
           <button
+            className={`text-xs px-1.5 py-0.5 rounded ${
+              team.sideBySide
+                ? "bg-slate-900 text-white hover:bg-slate-700"
+                : "hover:bg-slate-200 text-slate-500"
+            }`}
+            onClick={() => setTeamSideBySide(team.id, !team.sideBySide)}
+            aria-pressed={!!team.sideBySide}
+            title={
+              team.sideBySide
+                ? "Side by side with siblings — click to stack full-width"
+                : "Show side by side with sibling boxes"
+            }
+          >
+            ⇆
+          </button>
+        )}
+        {!readOnly && (
+          <button
             className="text-xs px-1.5 py-0.5 rounded hover:bg-slate-200"
             onClick={() => {
               const name = prompt("Sub-team name?");
@@ -212,21 +231,13 @@ function TeamBox({
           </div>
 
           {team.children.length > 0 && (
-            <div className="mt-3 pl-3 border-l-2 border-slate-200 space-y-2">
-              <SortableContext
-                items={team.children.map((c) => `sort-team-${c.id}`)}
+            <div className="mt-3 pl-3 border-l-2 border-slate-200">
+              <SiblingTeams
+                siblings={team.children}
+                expandedTeams={expandedTeams}
+                onToggle={onToggle}
                 strategy={verticalListSortingStrategy}
-              >
-                {team.children.map((c) => (
-                  <TeamBox
-                    key={c.id}
-                    team={c}
-                    expanded={expandedTeams.has(c.id)}
-                    onToggle={onToggle}
-                    expandedTeams={expandedTeams}
-                  />
-                ))}
-              </SortableContext>
+              />
             </div>
           )}
         </>
@@ -253,6 +264,58 @@ function TeamBox({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Renders an ordered list of sibling team boxes. Siblings marked `sideBySide`
+ * are collected into a single horizontal row (in order), placed where the first
+ * such sibling appears; the rest stack full-width.
+ */
+function SiblingTeams({
+  siblings,
+  expandedTeams,
+  onToggle,
+  strategy,
+}: {
+  siblings: Tree[];
+  expandedTeams: Set<TeamId>;
+  onToggle: (id: TeamId) => void;
+  strategy: typeof rectSortingStrategy;
+}) {
+  const renderBox = (c: Tree) => (
+    <TeamBox
+      team={c}
+      expanded={expandedTeams.has(c.id)}
+      onToggle={onToggle}
+      expandedTeams={expandedTeams}
+    />
+  );
+  const rowTeams = siblings.filter((c) => c.sideBySide);
+  let rowEmitted = false;
+  const blocks: React.ReactNode[] = [];
+  for (const c of siblings) {
+    if (c.sideBySide) {
+      if (!rowEmitted) {
+        rowEmitted = true;
+        blocks.push(
+          <div key="__sbs_row" className="flex flex-wrap gap-3 items-start">
+            {rowTeams.map((rc) => (
+              <div key={rc.id} className="flex-1 min-w-[220px]">
+                {renderBox(rc)}
+              </div>
+            ))}
+          </div>,
+        );
+      }
+    } else {
+      blocks.push(<div key={c.id}>{renderBox(c)}</div>);
+    }
+  }
+  return (
+    <SortableContext items={siblings.map((c) => `sort-team-${c.id}`)} strategy={strategy}>
+      <div className="space-y-3">{blocks}</div>
+    </SortableContext>
   );
 }
 
@@ -499,22 +562,12 @@ export default function SquadsView() {
                 No teams yet — click <strong>+ Team</strong> to create one.
               </div>
             ) : (
-              <SortableContext
-                items={forest.map((t) => `sort-team-${t.id}`)}
+              <SiblingTeams
+                siblings={forest}
+                expandedTeams={expandedTeams}
+                onToggle={toggleTeam}
                 strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-1 gap-3">
-                  {forest.map((t) => (
-                    <TeamBox
-                      key={t.id}
-                      team={t}
-                      expanded={expandedTeams.has(t.id)}
-                      onToggle={toggleTeam}
-                      expandedTeams={expandedTeams}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
+              />
             )}
           </DndContext>
         ) : (

@@ -24,6 +24,8 @@ export type Team = {
   parentId: TeamId | null;
   memberIds: StaffId[];
   order: number;
+  /** When true, this box shares a horizontal row with sibling boxes also marked side-by-side (nested view). */
+  sideBySide?: boolean;
 };
 
 export type MovementType =

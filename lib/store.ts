@@ -50,6 +50,7 @@ type Actions = {
   // teams
   addTeam: (input: { name: string; parentId?: TeamId | null }) => TeamId;
   renameTeam: (id: TeamId, name: string) => void;
+  setTeamSideBySide: (id: TeamId, value: boolean) => void;
   deleteTeam: (id: TeamId) => void;
   reparentTeam: (id: TeamId, parentId: TeamId | null) => void;
   // membership
@@ -249,6 +250,16 @@ export const useStore = create<Store>()(
               fromLabel: cur.name,
               toLabel: name,
             }),
+          };
+        });
+      },
+
+      setTeamSideBySide: (id, value) => {
+        set((state) => {
+          const cur = state.teams[id];
+          if (!cur || (cur.sideBySide ?? false) === value) return {} as Partial<Store>;
+          return {
+            teams: { ...state.teams, [id]: { ...cur, sideBySide: value } },
           };
         });
       },
