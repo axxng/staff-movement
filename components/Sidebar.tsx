@@ -29,7 +29,10 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
 
   const selectStaff = useUI((s) => s.selectStaff);
   const { setQuery, hasQuery, matchedStaff, roleFilterActive, visibleStaff } = useSearch();
-  const readOnly = useReadOnly();
+  const isReadOnly = useReadOnly();
+  const [editMode, setEditMode] = useState(false);
+  // Signed-in users see a compact, read-style sidebar until they turn on Edit.
+  const viewOnly = isReadOnly || !editMode;
 
   const [name, setName] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -81,12 +84,28 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
             <h1 className="text-base font-bold">Staff Movement</h1>
             <p className="text-[11px] text-slate-500">Org chart & squad tracker</p>
           </div>
-          <button
-            className="xl:hidden text-slate-400 hover:text-slate-600 text-xl"
-            onClick={onClose}
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            {!isReadOnly && (
+              <button
+                onClick={() => setEditMode((v) => !v)}
+                className={`text-xs px-2 py-1 rounded border transition ${
+                  editMode
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "border-slate-300 text-slate-600 hover:bg-slate-100"
+                }`}
+                aria-pressed={editMode}
+                title={editMode ? "Finish editing" : "Edit staff, roles & membership"}
+              >
+                {editMode ? "Done" : "Edit"}
+              </button>
+            )}
+            <button
+              className="xl:hidden text-slate-400 hover:text-slate-600 text-xl"
+              onClick={onClose}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
       <nav className="flex border-b text-[11px] overflow-x-auto">
@@ -107,7 +126,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
 
       {openSection === "staff" && (
         <div className="p-4 space-y-3">
-          {!readOnly && (
+          {!viewOnly && (
             <div className="space-y-2">
               <input
                 className="w-full text-sm border rounded px-2 py-1"
@@ -148,7 +167,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
             </div>
           )}
 
-          <div className={`${readOnly ? "" : "border-t"} pt-2 space-y-1 max-h-[60vh] overflow-y-auto`}>
+          <div className={`${viewOnly ? "" : "border-t"} pt-2 space-y-1 max-h-[60vh] overflow-y-auto`}>
             {visibleStaffList.length === 0 && (
               <div className="text-xs text-slate-400">
                 {Object.values(staff).length === 0
@@ -156,9 +175,9 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                   : "No staff match the current search/filter."}
               </div>
             )}
-            {visibleStaffList
-              .map((s) => {
-                const r = roles[s.roleId];
+            {visibleStaffList.map((s) => {
+              const r = roles[s.roleId];
+              if (viewOnly) {
                 return (
                   <div key={s.id} className="flex items-center gap-1 text-xs">
                     <button
@@ -167,60 +186,66 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       onClick={() => selectStaff(s.id)}
                       title="Open details"
                     />
-                    {readOnly ? (
-                      <>
-                        <button
-                          className="flex-1 text-left px-1 py-0.5 rounded hover:bg-slate-100 truncate min-w-0"
-                          onClick={() => selectStaff(s.id)}
-                          title="Open details"
-                        >
-                          {s.name}
-                        </button>
-                        <span className="text-[10px] text-slate-500 shrink-0">{r?.label}</span>
-                      </>
-                    ) : (
-                      <>
-                        <input
-                          className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
-                          defaultValue={s.name}
-                          onBlur={(e) => {
-                            const v = e.target.value.trim();
-                            if (v && v !== s.name) renameStaff(s.id, v);
-                          }}
-                          onDoubleClick={() => selectStaff(s.id)}
-                          title="Double-click to open details"
-                        />
-                        <select
-                          className="text-[10px] border rounded px-0.5 min-w-0"
-                          value={s.roleId}
-                          onChange={(e) => setRole(s.id, e.target.value)}
-                        >
-                          {roleList.map((rr) => (
-                            <option key={rr.id} value={rr.id}>
-                              {rr.label}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="text-red-500 hover:bg-red-50 px-1 rounded shrink-0"
-                          onClick={() => {
-                            if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
-                          }}
-                        >
-                          ×
-                        </button>
-                      </>
-                    )}
+                    <button
+                      className="flex-1 text-left px-1 py-0.5 rounded hover:bg-slate-100 truncate min-w-0"
+                      onClick={() => selectStaff(s.id)}
+                      title="Open details"
+                    >
+                      {s.name}
+                    </button>
+                    <span className="text-[10px] text-slate-500 shrink-0">{r?.label}</span>
                   </div>
                 );
-              })}
+              }
+              return (
+                <div key={s.id} className="text-xs border-b border-slate-100 pb-1.5">
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: r?.color ?? "#999" }}
+                      onClick={() => selectStaff(s.id)}
+                      title="Open details"
+                    />
+                    <input
+                      className="flex-1 px-1 py-0.5 rounded hover:bg-slate-100 cursor-text min-w-0"
+                      defaultValue={s.name}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && v !== s.name) renameStaff(s.id, v);
+                      }}
+                      onDoubleClick={() => selectStaff(s.id)}
+                      title="Double-click to open details"
+                    />
+                    <button
+                      className="text-red-500 hover:bg-red-50 px-1 rounded shrink-0"
+                      onClick={() => {
+                        if (confirm(`Delete ${s.name}?`)) deleteStaff(s.id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <select
+                    className="w-full text-[10px] border rounded px-1 py-0.5 mt-1"
+                    value={s.roleId}
+                    onChange={(e) => setRole(s.id, e.target.value)}
+                  >
+                    {roleList.map((rr) => (
+                      <option key={rr.id} value={rr.id}>
+                        {rr.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
       {openSection === "roles" && (
         <div className="p-4 space-y-2">
-          {readOnly
+          {viewOnly
             ? roleList.map((r) => (
                 <div key={r.id} className="flex items-center gap-2 text-xs">
                   <span
@@ -264,7 +289,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                   </button>
                 </div>
               ))}
-          {!readOnly && (
+          {!viewOnly && (
             <button
               className="text-xs px-2 py-1 mt-2 rounded border border-dashed border-slate-300 w-full hover:bg-slate-50"
               onClick={() => {
@@ -281,7 +306,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
       {openSection === "membership" && (
         <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-500">
-            {readOnly
+            {viewOnly
               ? "Team membership for each person."
               : "Quick way to assign staff to multiple teams without dragging."}
           </p>
@@ -295,7 +320,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       <span className="text-slate-400 italic">No teams</span>
                     )}
                     {memberOf.map((t) =>
-                      readOnly ? (
+                      viewOnly ? (
                         <span key={t.id} className="px-1.5 py-0.5 rounded bg-slate-200">
                           {t.name}
                         </span>
@@ -313,7 +338,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                       ),
                     )}
                   </div>
-                  {!readOnly && (
+                  {!viewOnly && (
                     <select
                       className="w-full text-[11px] border rounded px-1 py-0.5"
                       value=""
@@ -366,7 +391,7 @@ export default function Sidebar({ user, open, onClose }: { user: SessionUser; op
                   <span className="font-medium">{tag}</span>
                   <span className="text-slate-400 ml-1">({count})</span>
                 </button>
-                {!readOnly && (
+                {!viewOnly && (
                   <button
                     className="text-red-500 hover:bg-red-50 px-1 rounded"
                     onClick={() => {
