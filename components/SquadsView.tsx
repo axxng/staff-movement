@@ -81,17 +81,21 @@ function TeamBox({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(team.name);
   const dimmed = hasQuery && !matchedTeams.has(team.id);
+  const flash = useUI((s) => s.flashTeamId === team.id);
 
   return (
     <div
+      id={`team-box-${team.id}`}
       ref={(el) => {
         setRefs(el);
         setSortRef(el);
       }}
       style={sortStyle}
-      className={`rounded-xl border bg-slate-50 p-3 min-w-[220px] transition-opacity ${
+      className={`scroll-mt-3 rounded-xl border bg-slate-50 p-3 min-w-[220px] transition-all ${
         isOver ? "border-blue-500 bg-blue-50" : "border-slate-200"
-      } ${dimmed ? "opacity-40" : ""}`}
+      } ${dimmed ? "opacity-40" : ""} ${
+        flash ? "ring-2 ring-blue-500 ring-offset-2" : ""
+      }`}
     >
       <div className="flex items-center gap-1 mb-2">
         <button
@@ -365,6 +369,50 @@ function UnassignedZone() {
   );
 }
 
+function TocRow({
+  node,
+  depth,
+  onJump,
+}: {
+  node: Tree;
+  depth: number;
+  onJump: (id: TeamId) => void;
+}) {
+  return (
+    <>
+      <button
+        className="w-full flex items-center gap-1 text-left text-xs py-0.5 pr-1 rounded hover:bg-slate-100"
+        style={{ paddingLeft: depth * 12 + 4 }}
+        onClick={() => onJump(node.id)}
+        title={node.name}
+      >
+        <span className="truncate">{node.name}</span>
+        <span className="text-slate-400 ml-auto shrink-0">{node.memberIds.length}</span>
+      </button>
+      {node.children.map((c) => (
+        <TocRow key={c.id} node={c} depth={depth + 1} onJump={onJump} />
+      ))}
+    </>
+  );
+}
+
+function SquadsTOC({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => void }) {
+  return (
+    <aside className="hidden xl:block w-56 shrink-0 self-start sticky top-2 max-h-[calc(100vh-1rem)] overflow-y-auto">
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          Contents
+        </div>
+        <div className="space-y-0.5">
+          {forest.map((t) => (
+            <TocRow key={t.id} node={t} depth={0} onJump={onJump} />
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export default function SquadsView() {
   const teams = useStore((s) => s.teams);
   const addTeam = useStore((s) => s.addTeam);
@@ -403,6 +451,28 @@ export default function SquadsView() {
       setExpandedTeams(new Set(allTeamIds));
     }
   }, [allExpanded, allTeamIds]);
+
+  const jumpToTeam = useCallback(
+    (id: TeamId) => {
+      // Expand every ancestor so the target box is rendered, then scroll to it.
+      setExpandedTeams((prev) => {
+        const next = new Set(prev);
+        let cur: TeamId | null | undefined = id;
+        while (cur) {
+          next.add(cur);
+          cur = teams[cur]?.parentId ?? null;
+        }
+        return next;
+      });
+      useUI.getState().flashTeam(id);
+      setTimeout(() => {
+        document
+          .getElementById(`team-box-${id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    },
+    [teams],
+  );
 
   const onDragStart = (e: DragStartEvent) => {
     const data = e.active.data.current as { kind?: string } | undefined;
@@ -553,25 +623,33 @@ export default function SquadsView() {
         </div>
       </div>
 
-      <div ref={exportRef} className="export-safe bg-white rounded-xl p-4 overflow-auto space-y-3">
-        {subTab === "nested" ? (
-          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <UnassignedZone />
-            {forest.length === 0 ? (
-              <div className="text-slate-400 text-center py-12">
-                No teams yet — click <strong>+ Team</strong> to create one.
-              </div>
-            ) : (
-              <SiblingTeams
-                siblings={forest}
-                expandedTeams={expandedTeams}
-                onToggle={toggleTeam}
-                strategy={rectSortingStrategy}
-              />
-            )}
-          </DndContext>
-        ) : (
-          <SquadsTreeView />
+      <div className="flex gap-4 items-start">
+        <div
+          ref={exportRef}
+          className="export-safe bg-white rounded-xl p-4 overflow-auto space-y-3 flex-1 min-w-0"
+        >
+          {subTab === "nested" ? (
+            <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+              <UnassignedZone />
+              {forest.length === 0 ? (
+                <div className="text-slate-400 text-center py-12">
+                  No teams yet — click <strong>+ Team</strong> to create one.
+                </div>
+              ) : (
+                <SiblingTeams
+                  siblings={forest}
+                  expandedTeams={expandedTeams}
+                  onToggle={toggleTeam}
+                  strategy={rectSortingStrategy}
+                />
+              )}
+            </DndContext>
+          ) : (
+            <SquadsTreeView />
+          )}
+        </div>
+        {subTab === "nested" && forest.length > 0 && (
+          <SquadsTOC forest={forest} onJump={jumpToTeam} />
         )}
       </div>
     </>
