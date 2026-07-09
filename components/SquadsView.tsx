@@ -399,20 +399,63 @@ function TocRow({
   );
 }
 
-function SquadsTOC({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => void }) {
+function TocList({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => void }) {
   return (
-    <aside className="hidden xl:block w-56 shrink-0 self-start sticky top-2 max-h-[calc(100vh-1rem)] overflow-y-auto">
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
-          Contents
+    <div className="space-y-0.5">
+      {forest.map((t) => (
+        <TocRow key={t.id} node={t} depth={0} onJump={onJump} />
+      ))}
+    </div>
+  );
+}
+
+function SquadsTOC({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => void }) {
+  const [open, setOpen] = useState(false);
+  const jumpAndClose = (id: TeamId) => {
+    onJump(id);
+    setOpen(false);
+  };
+
+  return (
+    <>
+      {/* Desktop: sticky side panel */}
+      <aside className="hidden xl:block w-56 shrink-0 self-start sticky top-0 max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Contents
+          </div>
+          <TocList forest={forest} onJump={onJump} />
         </div>
-        <div className="space-y-0.5">
-          {forest.map((t) => (
-            <TocRow key={t.id} node={t} depth={0} onJump={onJump} />
-          ))}
+      </aside>
+
+      {/* Mobile: floating button that opens a drawer */}
+      <button
+        className="xl:hidden fixed bottom-4 right-4 z-40 rounded-full bg-slate-900 text-white shadow-lg px-4 py-3 text-sm font-medium"
+        onClick={() => setOpen(true)}
+        title="Jump to a squad"
+      >
+        Contents
+      </button>
+      {open && (
+        <div className="xl:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-72 max-w-[85vw] bg-white shadow-xl p-3 overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Contents
+              </div>
+              <button
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+                onClick={() => setOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <TocList forest={forest} onJump={jumpAndClose} />
+          </div>
         </div>
-      </div>
-    </aside>
+      )}
+    </>
   );
 }
 

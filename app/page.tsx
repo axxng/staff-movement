@@ -320,7 +320,7 @@ function PageInner({ user }: { user: SessionUser }) {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="border-b bg-white px-4 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
@@ -394,7 +394,7 @@ function PageInner({ user }: { user: SessionUser }) {
           </div>
         </header>
 
-        <section className="flex-1 p-3 sm:p-6 overflow-auto">
+        <section className="flex-1 min-h-0 p-3 sm:p-6 overflow-auto">
           {!hydrated ? (
             <div className="text-slate-400 text-sm">Loading...</div>
           ) : tab === "squads" ? (
