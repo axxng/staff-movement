@@ -42,8 +42,12 @@ function getLimiters(redis: Redis): {
 }
 
 export function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+  // Trust only `req.ip`, which Vercel's edge sets from the real connecting IP.
+  // The raw `x-forwarded-for` header is client-supplied and spoofable — keying
+  // on it would let an attacker rotate the value to get a fresh bucket per
+  // request, bypassing the per-IP limit entirely. If `req.ip` is ever absent
+  // (e.g. an unusual self-host), fall back to a shared bucket so we fail
+  // closed (more restrictive) rather than open.
   return req.ip ?? "unknown";
 }
 
