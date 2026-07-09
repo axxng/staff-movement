@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ReportingView from "@/components/ReportingView";
@@ -67,6 +67,100 @@ function RoleFilter() {
         >
           clear
         </button>
+      )}
+    </div>
+  );
+}
+
+function CountSummary({ isGuest }: { isGuest: boolean }) {
+  const staff = useStore((s) => s.staff);
+  const teams = useStore((s) => s.teams);
+  const movements = useStore((s) => s.movements.length);
+  const setTeamExcludedFromCount = useStore((s) => s.setTeamExcludedFromCount);
+  const { roleFilterActive, visibleStaff } = useSearch();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const { countedStaff, countedTeams, excludedCount } = useMemo(() => {
+    const teamList = Object.values(teams);
+    const excluded = new Set(teamList.filter((t) => t.excludeFromCount).map((t) => t.id));
+    const counted = new Set<string>();
+    for (const s of Object.values(staff)) {
+      const memberTeams = teamList.filter((t) => t.memberIds.includes(s.id));
+      // Unassigned people count; otherwise keep anyone in at least one non-excluded team.
+      if (memberTeams.length === 0 || memberTeams.some((t) => !excluded.has(t.id))) {
+        counted.add(s.id);
+      }
+    }
+    return {
+      countedStaff: counted,
+      countedTeams: teamList.length - excluded.size,
+      excludedCount: excluded.size,
+    };
+  }, [staff, teams]);
+
+  const staffNum = roleFilterActive
+    ? `${[...countedStaff].filter((id) => visibleStaff.has(id)).length} of ${countedStaff.size}`
+    : `${countedStaff.size}`;
+
+  const summary = `${staffNum} staff · ${countedTeams} teams · ${movements} events`;
+
+  if (isGuest) {
+    return <div className="text-xs text-slate-500 hidden sm:block">{summary}</div>;
+  }
+
+  const sortedTeams = Object.values(teams).sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div className="relative hidden sm:block" ref={ref}>
+      <button
+        className="text-xs text-slate-500 hover:text-slate-800 hover:underline decoration-dotted"
+        onClick={() => setOpen((v) => !v)}
+        title="Choose which teams count toward these totals"
+      >
+        {summary}
+        {excludedCount > 0 && (
+          <span className="text-amber-600"> · {excludedCount} excluded</span>
+        )}
+        <span className="ml-0.5">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-64 max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-50 p-2">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide px-1 pb-1">
+            Teams counted
+          </div>
+          {sortedTeams.length === 0 && (
+            <div className="text-xs text-slate-400 px-1 py-2">No teams yet.</div>
+          )}
+          {sortedTeams.map((t) => {
+            const included = !t.excludeFromCount;
+            return (
+              <label
+                key={t.id}
+                className="flex items-center gap-2 text-xs px-1 py-1 rounded hover:bg-slate-100 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={included}
+                  onChange={(e) => setTeamExcludedFromCount(t.id, !e.target.checked)}
+                />
+                <span className={`flex-1 truncate ${included ? "" : "text-slate-400 line-through"}`}>
+                  {t.name}
+                </span>
+                <span className="text-slate-400">{t.memberIds.length}</span>
+              </label>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -150,8 +244,6 @@ function PageInner({ user }: { user: SessionUser }) {
     useStore.temporal.getState().clear();
   }, []);
 
-  const { roleFilterActive, visibleStaff } = useSearch();
-
   const sync = useSync({ enabled: hydrated, config });
 
   // If sync gets a 401 and user is not a guest, redirect to login
@@ -229,13 +321,7 @@ function PageInner({ user }: { user: SessionUser }) {
             <HeaderSearch />
             <RoleFilter />
             {!isGuest && <UndoRedoButtons />}
-            <div className="text-xs text-slate-500 hidden sm:block">
-              {hydrated
-                ? `${
-                    roleFilterActive ? `${visibleStaff.size} of ${totals.staff}` : totals.staff
-                  } staff \u00b7 ${totals.teams} teams \u00b7 ${totals.movements} events`
-                : "\u2026"}
-            </div>
+            {hydrated && <CountSummary isGuest={isGuest} />}
             {!isGuest && (
               <SyncIndicator
                 status={sync.status}

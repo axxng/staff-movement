@@ -51,6 +51,7 @@ type Actions = {
   addTeam: (input: { name: string; parentId?: TeamId | null }) => TeamId;
   renameTeam: (id: TeamId, name: string) => void;
   setTeamSideBySide: (id: TeamId, value: boolean) => void;
+  setTeamExcludedFromCount: (id: TeamId, value: boolean) => void;
   deleteTeam: (id: TeamId) => void;
   reparentTeam: (id: TeamId, parentId: TeamId | null) => void;
   // membership
@@ -260,6 +261,16 @@ export const useStore = create<Store>()(
           if (!cur || (cur.sideBySide ?? false) === value) return {} as Partial<Store>;
           return {
             teams: { ...state.teams, [id]: { ...cur, sideBySide: value } },
+          };
+        });
+      },
+
+      setTeamExcludedFromCount: (id, value) => {
+        set((state) => {
+          const cur = state.teams[id];
+          if (!cur || (cur.excludeFromCount ?? false) === value) return {} as Partial<Store>;
+          return {
+            teams: { ...state.teams, [id]: { ...cur, excludeFromCount: value } },
           };
         });
       },

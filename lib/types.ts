@@ -26,6 +26,8 @@ export type Team = {
   order: number;
   /** When true, this box shares a horizontal row with sibling boxes also marked side-by-side (nested view). */
   sideBySide?: boolean;
+  /** When true, this team (and members unique to it) are omitted from the header staff/teams counts. */
+  excludeFromCount?: boolean;
 };
 
 export type MovementType =
