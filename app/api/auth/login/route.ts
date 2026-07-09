@@ -5,6 +5,7 @@ import {
   createSession,
   setSessionCookie,
 } from "@/lib/auth";
+import { checkLoginRateLimit, getClientIp } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await verifyCredentials(
-    redis,
-    body.username.trim().toLowerCase(),
-    body.password,
-  );
+  const username = body.username.trim().toLowerCase();
+
+  const rl = await checkLoginRateLimit(redis, getClientIp(req), username);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
+
+  const user = await verifyCredentials(redis, username, body.password);
   if (!user) {
     return NextResponse.json(
       { error: "Invalid username or password" },

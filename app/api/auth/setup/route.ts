@@ -6,6 +6,7 @@ import {
   createSession,
   setSessionCookie,
 } from "@/lib/auth";
+import { checkIpRateLimit, getClientIp } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,14 @@ export async function POST(req: NextRequest) {
   const redis = getRedis();
   if (!redis)
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  const rl = await checkIpRateLimit(redis, getClientIp(req));
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
 
   const count = await userCount(redis);
   if (count > 0) {
