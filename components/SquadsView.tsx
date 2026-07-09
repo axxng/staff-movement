@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -411,15 +411,39 @@ function TocList({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => v
 
 function SquadsTOC({ forest, onJump }: { forest: Tree[]; onJump: (id: TeamId) => void }) {
   const [open, setOpen] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
   const jumpAndClose = (id: TeamId) => {
     onJump(id);
     setOpen(false);
   };
 
+  // Bound the sticky panel to the actual scroll viewport (header height varies
+  // as role-filter chips wrap), so its own list scrolls instead of forcing a
+  // full-board scroll to reach the end.
+  useEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+    let scrollParent: HTMLElement | null = el.parentElement;
+    while (scrollParent && !/(auto|scroll)/.test(getComputedStyle(scrollParent).overflowY)) {
+      scrollParent = scrollParent.parentElement;
+    }
+    const target = scrollParent ?? document.documentElement;
+    const apply = () => {
+      el.style.maxHeight = `${target.clientHeight - 24}px`;
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(target);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <>
       {/* Desktop: sticky side panel */}
-      <aside className="hidden xl:block w-56 shrink-0 self-start sticky top-0 max-h-[calc(100vh-6rem)] overflow-y-auto">
+      <aside
+        ref={asideRef}
+        className="hidden xl:block w-56 shrink-0 self-start sticky top-0 overflow-y-auto"
+      >
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
             Contents
