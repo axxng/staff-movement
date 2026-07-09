@@ -152,12 +152,15 @@ function TeamTreeNode({
                 />
               ) : (
                 <span
-                  className="text-sm font-semibold truncate"
+                  className="min-w-0 flex items-baseline gap-1"
                   onDoubleClick={readOnly ? undefined : () => setEditing(true)}
-                  title={readOnly ? undefined : "Double-click to rename"}
+                  title={`${team.name}${readOnly ? "" : " — double-click to rename"}`}
                 >
-                  {team.name} ({visibleMemberIds.length}
-                  {team.children.length > 0 && ` · ${countSubtreeMembers(team, filterFn)} total`})
+                  <span className="text-sm font-semibold truncate">{team.name}</span>
+                  <span className="text-sm font-semibold text-slate-500 shrink-0">
+                    ({visibleMemberIds.length}
+                    {team.children.length > 0 && ` · ${countSubtreeMembers(team, filterFn)} total`})
+                  </span>
                 </span>
               )}
               {!readOnly && (
