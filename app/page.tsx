@@ -20,14 +20,46 @@ import type { SessionUser } from "@/lib/types";
 type Tab = "reporting" | "squads" | "history";
 
 function HeaderSearch() {
-  const { query, setQuery } = useSearch();
+  const { query, setQuery, hasQuery, matchedStaff, roleFilterActive, visibleStaff } = useSearch();
+  const teams = useStore((s) => s.teams);
+
+  const { people, cards } = useMemo(() => {
+    // Mirror the header counter: only matches that are actually visible, i.e.
+    // intersect with the role filter (which hides non-matching staff from the board).
+    const ids = roleFilterActive
+      ? [...matchedStaff].filter((id) => visibleStaff.has(id))
+      : [...matchedStaff];
+    // "cards" = highlighted spots on the board: one per squad membership, or one
+    // for the Unassigned card when a matched person is on no squad.
+    const membershipCount = new Map<string, number>();
+    for (const t of Object.values(teams)) {
+      for (const m of t.memberIds) membershipCount.set(m, (membershipCount.get(m) ?? 0) + 1);
+    }
+    let cards = 0;
+    for (const id of ids) cards += membershipCount.get(id) || 1;
+    return { people: ids.length, cards };
+  }, [matchedStaff, roleFilterActive, visibleStaff, teams]);
+
   return (
-    <input
-      className="text-sm border rounded px-3 py-1.5 w-40 sm:w-56"
-      placeholder="Search..."
-      value={query}
-      onChange={(e) => setQuery(e.target.value)}
-    />
+    <div className="flex items-center gap-2">
+      <input
+        className="text-sm border rounded px-3 py-1.5 w-40 sm:w-56"
+        placeholder="Search..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {hasQuery && (
+        <span
+          className={`text-xs whitespace-nowrap ${people === 0 ? "text-amber-600" : "text-slate-500"}`}
+        >
+          {people === 0
+            ? "No matches"
+            : `${people} ${people === 1 ? "person" : "people"} · ${cards} ${
+                cards === 1 ? "card" : "cards"
+              }`}
+        </span>
+      )}
+    </div>
   );
 }
 
